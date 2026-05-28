@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="primary">#FF6D00</color>
+    <color name="on_primary">#FFFFFF</color>
+    <color name="primary_container">#FFE0C4</color>
+    <color name="on_primary_container">#6B2A00</color>
+    <color name="secondary">#FF8F00</color>
+    <color name="surface">#FFFBFE</color>
+    <color name="on_surface">#1C1B1F</color>
+    <color name="on_surface_variant">#6E6E6E</color>
+    <color name="background">#F6F0F0</color>
+    <color name="error">#B00020</color>
+    <color name="outline_variant">#E0E0E0</color>
+
+    <!-- Adaptive Icon Colors -->
+    <color name="ic_launcher_background">#FFFFFF</color>
+    <color name="ic_launcher_foreground">#000000</color>
+</resources>

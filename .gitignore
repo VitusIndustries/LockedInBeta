@@ -1,0 +1,22 @@
+# Gradle
+.gradle/
+build/
+
+# Android Studio
+*.iml
+.idea/workspace.xml
+.idea/libraries/
+.idea/caches/
+.idea/assetWizardSettings.xml
+.idea/modules.xml
+.idea/navEditor.xml
+local.properties
+
+# Log files
+*.log
+
+# Built variants
+/app/build/
+
+# OS files
+.DS_Store
