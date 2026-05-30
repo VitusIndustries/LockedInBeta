@@ -2,32 +2,70 @@ package com.streakapp.data.repository
 
 import androidx.lifecycle.LiveData
 import com.streakapp.data.db.HabitDao
+import com.streakapp.data.db.HabitResetDao
 import com.streakapp.data.model.Habit
 import com.streakapp.data.model.HabitCompletion
+import com.streakapp.data.model.HabitReset
+import com.streakapp.DevModeManager
+import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
-class HabitRepository(private val dao: HabitDao) {
+class HabitRepository(
+    private val dao: HabitDao,
+    private val resetDao: HabitResetDao
+) {
 
     private val dateFormatter = DateTimeFormatter.ISO_LOCAL_DATE
 
     val allHabits: LiveData<List<Habit>> = dao.getAllHabits()
 
+    val archivedHabits: LiveData<List<Habit>> = dao.getArchivedHabits()
+
     suspend fun getAllHabitsOnce(): List<Habit> = dao.getAllHabitsOnce()
 
     suspend fun getHabitById(id: Long): Habit? = dao.getHabitById(id)
 
-    suspend fun addHabit(name: String, emoji: String, notifHour: Int, notifMinute: Int): Long {
+    suspend fun addHabit(name: String, emoji: String, notifHour: Int, notifMinute: Int, priority: Int = 1, targetCount: Int = 1): Long {
+        val habits = dao.getAllHabitsOnce()
+        val nextOrder = (habits.maxOfOrNull { it.manualOrder } ?: -1) + 1
         val habit = Habit(
             name = name,
             emoji = emoji,
             notificationHour = notifHour,
-            notificationMinute = notifMinute
+            notificationMinute = notifMinute,
+            priority = priority,
+            manualOrder = nextOrder,
+            targetCount = targetCount
         )
         return dao.insertHabit(habit)
     }
 
+    suspend fun archiveHabit(habit: Habit) {
+        dao.updateHabit(habit.copy(isArchived = true))
+    }
+
+    suspend fun unarchiveHabit(habit: Habit) {
+        // Reset streak to zero when unarchiving
+        dao.updateHabit(habit.copy(
+            isArchived = false,
+            currentStreak = 0,
+            lastCompletedDate = null
+        ))
+    }
+
     suspend fun deleteHabit(habit: Habit) = dao.deleteHabit(habit)
+
+    suspend fun updateHabitPriority(habit: Habit, priority: Int) {
+        dao.updateHabit(habit.copy(priority = priority))
+    }
+
+    suspend fun updateHabitOrders(habits: List<Habit>) {
+        val updatedHabits = habits.mapIndexed { index, habit ->
+            habit.copy(manualOrder = index)
+        }
+        dao.updateHabits(updatedHabits)
+    }
 
     fun getCompletionsForHabit(habitId: Long): LiveData<List<HabitCompletion>> =
         dao.getCompletionsForHabit(habitId)
@@ -39,20 +77,49 @@ class HabitRepository(private val dao: HabitDao) {
      * Toggle today's completion. Returns true if now completed, false if uncompleted.
      */
     suspend fun toggleTodayCompletion(habit: Habit, isVacationMode: Boolean = false): Boolean {
-        val today = LocalDate.now().format(dateFormatter)
-        val existing = dao.getCompletionForDate(habit.id, today)
-
-        return if (existing == null) {
-            // Mark as done
+        val todayDate = if (DevModeManager.isDevModeEnabled) DevModeManager.getDevToday() else LocalDate.now()
+        val today = todayDate.format(dateFormatter)
+        
+        val todayCompletionsCount = dao.getCompletionsForHabitOnce(habit.id)
+            .count { it.completedDate == today }
+            
+        return if (todayCompletionsCount < habit.targetCount) {
+            // Increment
             dao.insertCompletion(HabitCompletion(habitId = habit.id, completedDate = today))
-            recalculateStreak(habit, isVacationMode)
-            true
+            
+            val newCount = todayCompletionsCount + 1
+            
+            if (newCount >= habit.targetCount) {
+                dao.updateHabit(habit.copy(currentCountToday = newCount, lastCompletedDate = today))
+                recalculateStreak(habit, isVacationMode)
+                true
+            } else {
+                dao.updateHabit(habit.copy(currentCountToday = newCount))
+                false
+            }
         } else {
-            // Undo
+            // Already fully done, reset count and remove today's completions
             dao.deleteCompletionForDate(habit.id, today)
+            dao.updateHabit(habit.copy(currentCountToday = 0, lastCompletedDate = null))
             recalculateStreak(habit, isVacationMode)
             false
         }
+    }
+
+    suspend fun incrementHabitCount(habit: Habit, isVacationMode: Boolean = false): Habit {
+        val today = LocalDate.now().format(dateFormatter)
+        dao.insertCompletion(HabitCompletion(habitId = habit.id, completedDate = today))
+        
+        val todayCompletionsCount = dao.getCompletionsForHabitOnce(habit.id)
+            .count { it.completedDate == today }
+        
+        val updatedHabit = habit.copy(currentCountToday = todayCompletionsCount)
+        dao.updateHabit(updatedHabit)
+        
+        if (todayCompletionsCount >= habit.targetCount) {
+            recalculateStreak(updatedHabit, isVacationMode)
+        }
+        return updatedHabit
     }
 
     suspend fun isCompletedToday(habitId: Long): Boolean {
@@ -61,34 +128,41 @@ class HabitRepository(private val dao: HabitDao) {
     }
 
     private suspend fun recalculateStreak(habit: Habit, isVacationMode: Boolean) {
-        val completions = dao.getLast90Completions(habit.id)
+        val todayDate = if (DevModeManager.isDevModeEnabled) DevModeManager.getDevToday() else LocalDate.now()
+        
+        val completions = dao.getCompletionsForHabitOnce(habit.id)
             .map { LocalDate.parse(it.completedDate, dateFormatter) }
             .toSortedSet(compareByDescending { it })
 
         var streak = 0
-        var check = LocalDate.now()
+        var check = todayDate
 
-        // If today is not completed, we start checking from yesterday
+        // If not done today, start checking from yesterday
         if (!completions.contains(check)) {
-            check = check.minusDays(1)
+            val yesterday = check.minusDays(1)
+            if (!completions.contains(yesterday) && !isVacationMode) {
+                // Streak is broken
+                streak = 0
+            } else {
+                check = yesterday
+            }
         }
 
-        while (completions.contains(check) || isVacationMode) {
-            if (completions.contains(check)) {
-                streak++
-            } else {
-                // Vacation mode: skip missing days but stop if we hit a wall of 7 missed days (sanity check)
-                // In a real app, you might want to check if vacation mode was active ON that specific date.
-                // For now, if global vacation mode is ON, gaps don't break the streak.
-                if (check.isBefore(LocalDate.now().minusDays(90))) break 
-            }
-            check = check.minusDays(1)
-            
-            // If we found a day that IS in completions after a gap, the loop continues.
-            // If we are deep in the past and no more completions exist, we should stop.
-            if (completions.isEmpty() || check.isBefore(completions.last())) {
-                if (!completions.contains(check) && !isVacationMode) break
-                if (check.isBefore(completions.last().minusDays(1))) break
+        // Count backward
+        if (completions.contains(check) || isVacationMode) {
+            while (completions.contains(check) || isVacationMode) {
+                if (completions.contains(check)) {
+                    streak++
+                } else if (check.isBefore(todayDate.minusDays(90))) {
+                    break // safety limit
+                }
+                
+                check = check.minusDays(1)
+                
+                // If we've gone past the oldest completion and not in vacation mode, stop
+                if (!isVacationMode && (completions.isEmpty() || check.isBefore(completions.last()))) {
+                    break
+                }
             }
         }
 
@@ -109,8 +183,55 @@ class HabitRepository(private val dao: HabitDao) {
     }
 
     suspend fun saveResetReason(habit: Habit, reason: String) {
-        dao.updateHabit(habit.copy(lastResetReason = reason, currentStreak = 0))
+        // 1. Delete ALL history for this habit to force the streak to zero
+        dao.deleteCompletionsForHabit(habit.id)
+
+        val resetStreak = habit.currentStreak
+        val dayOfWeek = LocalDate.now().dayOfWeek.value
+
+        // 2. Clear current progress and reset streak to 0
+        dao.updateHabit(
+            habit.copy(
+                lastResetReason = reason,
+                currentStreak = 0,
+                currentCountToday = 0,
+                lastCompletedDate = null
+            )
+        )
+        
+        // 3. Log the reason
+        resetDao.insertReset(
+            HabitReset(
+                habitId = habit.id,
+                reason = reason,
+                streakAtReset = resetStreak,
+                dayOfWeek = dayOfWeek
+            )
+        )
     }
+
+    suspend fun getFailurePattern(habitId: Long): Int? {
+        val resets = resetDao.getResetsForHabit(habitId)
+        if (resets.size < 2) return null
+        
+        // Count frequencies of streakAtReset
+        val frequencies = resets.groupingBy { it.streakAtReset }.eachCount()
+        val topPattern = frequencies.maxByOrNull { it.value }
+        
+        return if (topPattern != null && topPattern.value >= 2) topPattern.key else null
+    }
+
+    suspend fun getToughestDayOfWeek(habitId: Long): DayOfWeek? {
+        val resets = resetDao.getResetsForHabit(habitId)
+        if (resets.size < 2) return null
+        
+        val frequencies = resets.groupingBy { it.dayOfWeek }.eachCount()
+        val topDay = frequencies.maxByOrNull { it.value }
+        
+        return if (topDay != null && topDay.value >= 2) DayOfWeek.of(topDay.key) else null
+    }
+
+    suspend fun getReasonCounts(habitId: Long) = resetDao.getReasonCountsForHabit(habitId)
 
     suspend fun recoverStreak(habit: Habit, date: String) {
         dao.insertCompletion(HabitCompletion(habitId = habit.id, completedDate = date))

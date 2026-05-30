@@ -9,6 +9,24 @@
         app:showAsAction="ifRoom" />
 
     <item
+        android:id="@+id/action_sort"
+        android:title="Sort Order"
+        android:icon="@android:drawable/ic_menu_sort_by_size"
+        app:showAsAction="ifRoom">
+        <menu>
+            <item
+                android:id="@+id/sort_manual"
+                android:title="User order" />
+            <item
+                android:id="@+id/sort_time"
+                android:title="Time remaining" />
+            <item
+                android:id="@+id/sort_importance"
+                android:title="Importance" />
+        </menu>
+    </item>
+
+    <item
         android:id="@+id/action_settings"
         android:title="Settings"
         android:icon="@drawable/ic_gear"

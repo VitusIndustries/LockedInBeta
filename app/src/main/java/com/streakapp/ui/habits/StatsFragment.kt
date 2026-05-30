@@ -43,8 +43,10 @@ class StatsFragment : BottomSheetDialogFragment() {
         statsViewModel.habit.observe(viewLifecycleOwner) { habit ->
             habit ?: return@observe
             binding.tvStatsTitle.text = "${habit.emoji} ${habit.name}"
-            binding.tvCurrentStreak.text = "🔥 Current: ${habit.currentStreak} days"
-            binding.tvLongestStreak.text = "🏆 Longest: ${habit.longestStreak} days"
+            val currentText = if (habit.currentStreak == 1) "1 day" else "${habit.currentStreak} days"
+            val longestText = if (habit.longestStreak == 1) "1 day" else "${habit.longestStreak} days"
+            binding.tvCurrentStreak.text = "🔥 Current: $currentText"
+            binding.tvLongestStreak.text = "🏆 Longest: $longestText"
         }
 
         statsViewModel.last30Days.observe(viewLifecycleOwner) { completedDates ->

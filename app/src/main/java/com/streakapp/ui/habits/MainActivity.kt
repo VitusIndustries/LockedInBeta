@@ -17,9 +17,12 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.content.res.ResourcesCompat
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.viewpager2.widget.ViewPager2
 import com.google.android.material.snackbar.Snackbar
+import com.google.android.material.tabs.TabLayoutMediator
 import com.lockedinbeta.R
 import com.lockedinbeta.databinding.ActivityMainBinding
+import com.streakapp.VibrationManager
 import com.streakapp.notifications.NotificationScheduler
 
 class MainActivity : AppCompatActivity() {
@@ -62,6 +65,16 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupViewPager() {
         binding.viewPager.adapter = MainPagerAdapter(this)
+        
+        TabLayoutMediator(binding.tabLayout, binding.viewPager) { tab, position ->
+            tab.text = if (position == 0) "Streaks" else "History"
+        }.attach()
+
+        binding.viewPager.registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
+            override fun onPageSelected(position: Int) {
+                // Toolbar title is now static "LockedIn"
+            }
+        })
     }
 
     private fun observeMessages() {
@@ -101,7 +114,7 @@ class MainActivity : AppCompatActivity() {
                                 .setDuration(400)
                                 .withEndAction {
                                     binding.toolbarLogo.visibility = android.view.View.VISIBLE
-                                    binding.toolbarTitle.text = "Streaks"
+                                    binding.toolbarTitle.text = "LockedIn"
                                     binding.toolbarTitle.setTextColor(
                                         com.google.android.material.color.MaterialColors.getColor(binding.toolbarTitle, com.google.android.material.R.attr.colorOnSurface)
                                     )
@@ -133,7 +146,7 @@ class MainActivity : AppCompatActivity() {
         }
         
         if (isMilestone) {
-            triggerVibration()
+            VibrationManager.vibrateMilestone(this)
             binding.confettiView.burst()
             val congrats = when (streak) {
                 7 -> "1 Week! Keep it up! 🚀"
@@ -147,11 +160,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun triggerVibration() {
-        val vibrator = getSystemService(VIBRATOR_SERVICE) as Vibrator
-        val pattern = longArrayOf(0, 100, 50, 100, 50, 100)
-        vibrator.vibrate(VibrationEffect.createWaveform(pattern, -1))
-    }
+    // Removed triggerVibration, logic moved to VibrationManager
 
     private fun startQuoteAnimation() {
         val prefs = getSharedPreferences("streak_prefs", Context.MODE_PRIVATE)
@@ -185,7 +194,7 @@ class MainActivity : AppCompatActivity() {
         
         val finalColor = if (showEasterEgg) Color.parseColor("#FFD700") else quoteColor // Gold for easter eggs
         
-        if (showEasterEgg) triggerVibration()
+        if (showEasterEgg) VibrationManager.vibrateStrong(this)
         
         binding.toolbarBrandContainer.postDelayed({
             showToolbarMessage(message, finalColor, 2000)
@@ -200,11 +209,30 @@ class MainActivity : AppCompatActivity() {
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         return when (item.itemId) {
             R.id.action_all_stats -> {
-                AllStatsFragment().show(supportFragmentManager, "AllStats")
+                if (com.streakapp.DevModeManager.isDevModeEnabled) {
+                    com.streakapp.DevModeManager.dateOffsetDays++
+                    val newDate = com.streakapp.DevModeManager.getDevToday()
+                    showStyledSnackbar("Dev: Day advanced to $newDate")
+                    recreate() 
+                } else {
+                    AllStatsFragment().show(supportFragmentManager, "AllStats")
+                }
                 true
             }
             R.id.action_settings -> {
                 SettingsBottomSheet().show(supportFragmentManager, "Settings")
+                true
+            }
+            R.id.sort_manual -> {
+                viewModel.setSortOrder(HabitViewModel.SortOrder.USER_ORDER)
+                true
+            }
+            R.id.sort_time -> {
+                viewModel.setSortOrder(HabitViewModel.SortOrder.TIME_REMAINING)
+                true
+            }
+            R.id.sort_importance -> {
+                viewModel.setSortOrder(HabitViewModel.SortOrder.IMPORTANCE)
                 true
             }
             else -> super.onOptionsItemSelected(item)

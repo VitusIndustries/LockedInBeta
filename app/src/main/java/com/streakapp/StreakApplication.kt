@@ -7,16 +7,18 @@ import android.content.Context
 import androidx.appcompat.app.AppCompatDelegate
 import com.streakapp.data.db.StreakDatabase
 import com.streakapp.data.repository.HabitRepository
+import com.streakapp.notifications.NotificationScheduler
 
 class StreakApplication : Application() {
 
     val database by lazy { StreakDatabase.getDatabase(this) }
-    val repository by lazy { HabitRepository(database.habitDao()) }
+    val repository by lazy { HabitRepository(database.habitDao(), database.habitResetDao()) }
 
     override fun onCreate() {
         super.onCreate()
         applySettings()
         createNotificationChannel()
+        NotificationScheduler.scheduleProactiveInsights(this)
     }
 
     private fun applySettings() {

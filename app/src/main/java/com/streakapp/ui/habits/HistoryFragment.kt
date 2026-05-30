@@ -15,6 +15,8 @@ import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
+import java.util.Locale
+
 class HistoryFragment : Fragment() {
     private var _binding: FragmentHistoryBinding? = null
     private val binding get() = _binding!!
@@ -59,23 +61,13 @@ class HistoryFragment : Fragment() {
                 showHabitDetails(selectedHabit)
             }
         }
-
-        binding.btnStreakRecovery.setOnClickListener {
-            val habits = viewModel.allHabits.value ?: return@setOnClickListener
-            if (habits.isNotEmpty()) {
-                val firstHabit = habits.first()
-                lifecycleScope.launch {
-                    (requireActivity().application as StreakApplication).repository.toggleTodayCompletion(firstHabit)
-                    android.widget.Toast.makeText(context, "Streak Recovered!", android.widget.Toast.LENGTH_SHORT).show()
-                }
-            }
-        }
     }
 
     private fun showHabitDetails(habit: Habit) {
         binding.individualStatsContainer.visibility = View.VISIBLE
         binding.tvHabitDetailTitle.text = habit.name
-        binding.tvMaxStreakRecord.text = "Highest Streak: ${habit.longestStreak} days"
+        val streakText = if (habit.longestStreak == 1) "1 day" else "${habit.longestStreak} days"
+        binding.tvMaxStreakRecord.text = "Highest Streak: $streakText"
         
         val lastCompleted = habit.lastCompletedDate
         if (lastCompleted != null) {
@@ -92,6 +84,26 @@ class HistoryFragment : Fragment() {
 
         val repo = (requireActivity().application as StreakApplication).repository
         lifecycleScope.launch {
+            binding.cardInsights.visibility = View.VISIBLE
+            val failureDay = repo.getFailurePattern(habit.id)
+            val toughestDay = repo.getToughestDayOfWeek(habit.id)
+            
+            val insight = when {
+                failureDay != null -> "You usually break ${habit.name} around day $failureDay. Tomorrow is day $failureDay. Push through it."
+                toughestDay != null -> {
+                    val dayName = toughestDay.name.lowercase().replaceFirstChar { it.uppercase() }
+                    "You often struggle with ${habit.name} on $dayName. Stay focused today!"
+                }
+                else -> "Keep going — insights appear as your data grows"
+            }
+            binding.tvInsightText.text = insight
+
+            val reasonCounts = repo.getReasonCounts(habit.id)
+            if (reasonCounts.isNotEmpty()) {
+                val reasonSummary = reasonCounts.joinToString("\n") { "${it.reason}: ${it.count} times" }
+                binding.tvStreakEndReason.text = binding.tvStreakEndReason.text.toString() + "\n\nAll Reset Reasons:\n" + reasonSummary
+            }
+
             val completions = repo.getLast90Completions(habit.id)
                 .map { LocalDate.parse(it.completedDate, DateTimeFormatter.ISO_LOCAL_DATE) }
                 .toSet()
@@ -107,6 +119,13 @@ class HistoryFragment : Fragment() {
                 streakData[date.format(DateTimeFormatter.ISO_LOCAL_DATE)] = streak
             }
             binding.habitDetailCalendar.setStreakData(streakData)
+
+            // Calculate Completion Rate (30d)
+            val thirtyDaysAgo = LocalDate.now().minusDays(30)
+            val recentCompletions = completions.count { !it.isBefore(thirtyDaysAgo) }
+            val rate = (recentCompletions / 30f * 100).toInt()
+            binding.progressCompletion.progress = rate
+            binding.tvCompletionPercent.text = "$rate%"
         }
     }
 

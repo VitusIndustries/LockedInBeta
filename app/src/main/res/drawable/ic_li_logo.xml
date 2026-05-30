@@ -3,18 +3,22 @@
     android:height="24dp"
     android:viewportWidth="100"
     android:viewportHeight="100">
-    <!-- Lock Arch - Moved up to create visible gap -->
+
+    <!-- Perfectly centered shackle semicircle -->
     <path
-        android:pathData="M30,32c0,-11.05 8.95,-20 20,-20s20,8.95 20,20"
-        android:strokeWidth="10"
         android:strokeColor="?attr/colorOnSurface"
-        android:strokeLineCap="butt"/>
-    <!-- Slanted L -->
+        android:strokeWidth="10"
+        android:strokeLineCap="butt"
+        android:pathData="M32,35 A18,18 0 0 1 68,35" />
+
+    <!-- Slanted L - Centered below the shackle -->
     <path
         android:fillColor="?attr/colorOnSurface"
-        android:pathData="M20,85l35,0l1.5,-10l-23,0l1.5,-35l-12,0z"/>
-    <!-- Slanted I -->
+        android:pathData="M22,85 L52,85 L54,75 L36,75 L40,40 L28,40 Z" />
+
+    <!-- Slanted I - Centered below the shackle -->
     <path
         android:fillColor="?attr/colorOnSurface"
-        android:pathData="M65,85l12,0l4.5,-45l-12,0z"/>
+        android:pathData="M58,85 L70,85 L76,40 L64,40 Z" />
+
 </vector>

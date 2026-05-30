@@ -14,10 +14,10 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
 
-        <com.streakapp.ui.fire.CartoonFireView
+        <androidx.compose.ui.platform.ComposeView
             android:id="@+id/fireView"
             android:layout_width="0dp"
-            android:layout_height="140dp"
+            android:layout_height="200dp"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent" />
@@ -105,15 +105,6 @@
                 android:layout_height="40dp"
                 android:layout_marginStart="8dp"
                 android:text="Stats"
-                android:textSize="13sp" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnDelete"
-                style="@style/Widget.Material3.Button.TextButton"
-                android:layout_width="wrap_content"
-                android:layout_height="40dp"
-                android:text="Delete"
-                android:textColor="@color/error"
                 android:textSize="13sp" />
 
         </LinearLayout>

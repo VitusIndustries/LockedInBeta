@@ -3,25 +3,29 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <group
-        android:pivotX="54"
-        android:pivotY="54"
-        android:scaleX="0.65"
-        android:scaleY="0.65">
 
-        <!-- Lock Arch - Fixed Gap -->
+    <group
+        android:translateX="27"
+        android:translateY="27"
+        android:scaleX="0.5"
+        android:scaleY="0.5">
+
+        <!-- Shackle semicircle -->
         <path
-            android:pathData="M30,32c0,-11.05 8.95,-20 20,-20s20,8.95 20,20"
+            android:strokeColor="#FFFFFF"
             android:strokeWidth="10"
-            android:strokeColor="@color/ic_launcher_foreground"
-            android:strokeLineCap="butt"/>
+            android:strokeLineCap="butt"
+            android:pathData="M32,35 A18,18 0 0 1 68,35" />
+
         <!-- Slanted L -->
         <path
-            android:fillColor="@color/ic_launcher_foreground"
-            android:pathData="M20,85l35,0l1.5,-10l-23,0l1.5,-35l-12,0z"/>
+            android:fillColor="#FFFFFF"
+            android:pathData="M22,85 L52,85 L54,75 L36,75 L40,40 L28,40 Z" />
+
         <!-- Slanted I -->
         <path
-            android:fillColor="@color/ic_launcher_foreground"
-            android:pathData="M65,85l12,0l4.5,-45l-12,0z"/>
+            android:fillColor="#FFFFFF"
+            android:pathData="M58,85 L70,85 L76,40 L64,40 Z" />
+
     </group>
 </vector>

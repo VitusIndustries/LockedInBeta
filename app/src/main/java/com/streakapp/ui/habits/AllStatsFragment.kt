@@ -33,12 +33,17 @@ class AllStatsFragment : BottomSheetDialogFragment() {
 
             binding.tvTotalHabits.text = "📋 Total habits: $totalHabits"
             binding.tvActiveStreaks.text = "🔥 Active streaks: $activeStreaks"
-            binding.tvLongestEver.text = "🏆 Longest streak ever: $longestOverall days"
-            binding.tvAvgStreak.text = "📊 Avg current streak: $avgStreak days"
+            val longestText = if (longestOverall == 1) "1 day" else "$longestOverall days"
+            val avgText = if (avgStreak == 1) "1 day" else "$avgStreak days"
+            binding.tvLongestEver.text = "🏆 Longest streak ever: $longestText"
+            binding.tvAvgStreak.text = "📊 Avg current streak: $avgText"
 
             // Build leaderboard
             val leaderboard = habits.sortedByDescending { it.currentStreak }
-                .joinToString("\n") { "${it.emoji} ${it.name}: ${it.currentStreak} days" }
+                .joinToString("\n") { 
+                    val daysText = if (it.currentStreak == 1) "1 day" else "${it.currentStreak} days"
+                    "${it.emoji} ${it.name}: $daysText" 
+                }
             binding.tvLeaderboard.text = leaderboard.ifEmpty { "No habits yet!" }
         }
     }

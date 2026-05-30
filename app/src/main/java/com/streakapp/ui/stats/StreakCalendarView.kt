@@ -56,7 +56,7 @@ class StreakCalendarView @JvmOverloads constructor(
         val cellSize = width / 7f
         val firstDayOfWeek = (month.atDay(1).dayOfWeek.value - 1) % 7
         val rows = (month.lengthOfMonth() + firstDayOfWeek + 6) / 7
-        val height = (cellSize * rows + 100).toInt()
+        val height = (cellSize * rows + 150).toInt() // Increased padding for header
         setMeasuredDimension(width, height)
     }
 
@@ -65,10 +65,17 @@ class StreakCalendarView @JvmOverloads constructor(
         val cellSize = width / 7f
         val radius = cellSize * 0.45f // Increased from 0.38f to fill more space
 
+        // Draw month name at the top
+        val monthName = month.month.getDisplayName(java.time.format.TextStyle.FULL, java.util.Locale.US)
+        val year = month.year.toString()
+        paintHeader.textAlign = Paint.Align.LEFT 
+        canvas.drawText("$monthName $year", 0f, 40f, paintHeader)
+
         val days = listOf("M", "T", "W", "T", "F", "S", "S")
         paintHeader.color = if (isDarkMode()) Color.WHITE else Color.parseColor("#212121")
+        paintHeader.textAlign = Paint.Align.CENTER
         days.forEachIndexed { i, d ->
-            canvas.drawText(d, cellSize * i + cellSize / 2, 50f, paintHeader)
+            canvas.drawText(d, cellSize * i + cellSize / 2, 100f, paintHeader)
         }
 
         val firstDayOfWeek = (month.atDay(1).dayOfWeek.value - 1) % 7
@@ -80,7 +87,7 @@ class StreakCalendarView @JvmOverloads constructor(
             val row = index / 7
 
             val cx = col * cellSize + cellSize / 2
-            val cy = 80 + row * cellSize + cellSize / 2
+            val cy = 130 + row * cellSize + cellSize / 2
             val rect = RectF(cx - radius, cy - radius, cx + radius, cy + radius)
 
             val date = month.atDay(day).format(dateFormatter)

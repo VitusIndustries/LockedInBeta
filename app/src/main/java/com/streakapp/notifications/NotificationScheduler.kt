@@ -41,4 +41,25 @@ object NotificationScheduler {
         WorkManager.getInstance(context)
             .cancelUniqueWork("habit_notif_$habitId")
     }
+
+    fun scheduleProactiveInsights(context: Context) {
+        val now = Calendar.getInstance()
+        val target = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, 8)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            if (before(now)) add(Calendar.DAY_OF_YEAR, 1)
+        }
+        val delay = target.timeInMillis - now.timeInMillis
+
+        val request = PeriodicWorkRequestBuilder<ProactiveInsightWorker>(1, TimeUnit.DAYS)
+            .setInitialDelay(delay, TimeUnit.MILLISECONDS)
+            .build()
+
+        WorkManager.getInstance(context).enqueueUniquePeriodicWork(
+            "proactive_insights",
+            ExistingPeriodicWorkPolicy.KEEP,
+            request
+        )
+    }
 }

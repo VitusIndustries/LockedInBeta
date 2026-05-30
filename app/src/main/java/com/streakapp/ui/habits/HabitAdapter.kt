@@ -1,25 +1,27 @@
 package com.streakapp.ui.habits
 
-import android.animation.ObjectAnimator
-import android.animation.PropertyValuesHolder
-import android.content.Context
 import android.view.LayoutInflater
+import android.view.View
 import android.view.ViewGroup
+import android.widget.LinearLayout
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.streakapp.data.model.Habit
 import com.lockedinbeta.databinding.ItemHabitBinding
 import com.streakapp.DevModeManager
-import com.streakapp.ui.fire.CartoonFireView
-import kotlinx.coroutines.*
+import com.streakapp.VibrationManager
+import android.content.Context
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import com.streakapp.ui.fire.CinematicFireAnimation
+import androidx.compose.ui.platform.ViewCompositionStrategy
 
 class HabitAdapter(
     private val onCheckClick: (Habit) -> Unit,
     private val onStatsClick: (Habit) -> Unit,
     private val onDeleteClick: (Habit) -> Unit,
+    private val onFailClick: (Habit) -> Unit = {},
     private val onStreakUpdate: (Long, Int) -> Unit = { _, _ -> }
 ) : ListAdapter<Habit, HabitAdapter.HabitViewHolder>(DiffCallback) {
 
@@ -31,32 +33,75 @@ class HabitAdapter(
         fun bind(habit: Habit) {
             val prefs = binding.root.context.getSharedPreferences("streak_prefs", Context.MODE_PRIVATE)
             val isMinimalist = prefs.getBoolean("minimalist_mode", false)
-
+            val isVacationMode = prefs.getBoolean("vacation_mode", false)
+            val streakEmoji = if (isVacationMode) "❄️" else "🔥"
+            
             val displayedStreak = DevModeManager.streakOverrides[habit.id] ?: habit.currentStreak
 
             binding.tvHabitEmoji.text = habit.emoji
             binding.tvHabitName.text = habit.name
-            binding.tvStreak.text = "$displayedStreak 🔥"
+            binding.tvStreak.text = "$displayedStreak $streakEmoji"
             binding.tvLongest.text = "Best: ${habit.longestStreak}"
 
             // Check if completed today
-            val today = LocalDate.now().format(dateFormatter)
+            val todayDate = if (DevModeManager.isDevModeEnabled) DevModeManager.getDevToday() else LocalDate.now()
+            val today = todayDate.format(dateFormatter)
             val completedToday = habit.lastCompletedDate == today
-            binding.btnCheck.isChecked = completedToday
-            binding.btnCheck.text = if (completedToday) "✓ Done" else "Mark Done"
+            
+            binding.btnCheck.visibility = View.VISIBLE
+            
+            if (habit.targetCount > 1) {
+                if (completedToday || habit.currentCountToday >= habit.targetCount) {
+                    binding.btnCheck.isChecked = true
+                    binding.btnCheck.text = "✓ Done"
+                } else {
+                    binding.btnCheck.isChecked = false
+                    binding.btnCheck.text = "Mark ${habit.currentCountToday}/${habit.targetCount}"
+                }
+            } else {
+                binding.btnCheck.isChecked = completedToday
+                binding.btnCheck.text = if (completedToday) "✓ Done" else "Mark Done"
+            }
 
-            binding.btnCheck.setOnClickListener { onCheckClick(habit) }
-            binding.btnStats.setOnClickListener { onStatsClick(habit) }
-            binding.btnDelete.setOnClickListener { onDeleteClick(habit) }
+            // Set button color based on importance
+            val importanceColor = when (habit.priority) {
+                0 -> 0xFFFFCDD2.toInt() // High - Light Red
+                2 -> 0xFFC8E6C9.toInt() // Low - Light Green
+                else -> 0xFFFFE082.toInt() // Medium - Darker Amber/Yellow
+            }
+            val onImportanceColor = when (habit.priority) {
+                0 -> 0xFFB71C1C.toInt() // Dark Red text
+                2 -> 0xFF1B5E20.toInt() // Dark Green text
+                else -> 0xFF6D4C41.toInt() // Dark Brown/Amber text
+            }
+            
+            binding.btnCheck.backgroundTintList = android.content.res.ColorStateList.valueOf(importanceColor)
+            binding.btnCheck.setTextColor(onImportanceColor)
+
+            binding.btnCheck.setOnClickListener { 
+                VibrationManager.vibrateMedium(binding.root.context)
+                onCheckClick(habit)
+            }
+            binding.btnStats.setOnClickListener { 
+                VibrationManager.vibrateSubtle(binding.root.context)
+                onStatsClick(habit) 
+            }
+
+            // Removed long click listener as requested
 
             // Update fire animation
-            binding.fireView.setStreak(displayedStreak)
-            binding.fireView.visibility = if (displayedStreak > 0 && !isMinimalist) android.view.View.VISIBLE else android.view.View.GONE
-            binding.tvLongest.visibility = if (isMinimalist) android.view.View.GONE else android.view.View.VISIBLE
+            binding.fireView.visibility = if (displayedStreak > 0 && !isMinimalist && !isVacationMode) View.VISIBLE else View.GONE
+            binding.fireView.apply {
+                setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnDetachedFromWindow)
+                setContent {
+                    CinematicFireAnimation(streakCount = displayedStreak)
+                }
+            }
+            binding.tvLongest.visibility = if (isMinimalist) View.GONE else View.VISIBLE
             
             // Adjust margins for minimalist mode
             val topMargin = if (isMinimalist) 8 else 32
-            val buttonsLayout = binding.btnCheck.parent as? android.widget.LinearLayout
+            val buttonsLayout = binding.btnCheck.parent as? LinearLayout
             (buttonsLayout?.layoutParams as? ViewGroup.MarginLayoutParams)?.topMargin = (topMargin * binding.root.context.resources.displayMetrics.density).toInt()
 
             // Dev Mode Streak Override
@@ -67,6 +112,14 @@ class HabitAdapter(
                     DevModeManager.streakOverrides[habit.id] = newStreak
                     onStreakUpdate(habit.id, newStreak)
                     notifyItemChanged(bindingAdapterPosition)
+                }
+            }
+
+            // Dev Mode Manual Fail
+            binding.tvHabitName.setOnClickListener {
+                if (DevModeManager.isDevModeEnabled) {
+                    VibrationManager.vibrateStrong(binding.root.context)
+                    onFailClick(habit)
                 }
             }
 

@@ -6,15 +6,17 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import com.streakapp.data.model.Habit
 import com.streakapp.data.model.HabitCompletion
+import com.streakapp.data.model.HabitReset
 
 @Database(
-    entities = [Habit::class, HabitCompletion::class],
-    version = 2,
+    entities = [Habit::class, HabitCompletion::class, HabitReset::class],
+    version = 7,
     exportSchema = false
 )
 abstract class StreakDatabase : RoomDatabase() {
 
     abstract fun habitDao(): HabitDao
+    abstract fun habitResetDao(): HabitResetDao
 
     companion object {
         @Volatile

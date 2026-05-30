@@ -1,15 +1,18 @@
 package com.streakapp.ui.habits
 
+import android.app.Dialog
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.WindowManager
 import android.widget.Toast
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import com.lockedinbeta.databinding.BottomSheetResetReasonBinding
 import com.streakapp.StreakApplication
+import com.streakapp.VibrationManager
 import com.streakapp.data.model.Habit
 import com.streakapp.data.model.HabitCompletion
 import kotlinx.coroutines.launch
@@ -23,6 +26,12 @@ class ResetReasonBottomSheet : BottomSheetDialogFragment() {
     
     private val viewModel: HabitViewModel by activityViewModels {
         HabitViewModelFactory(requireActivity().application)
+    }
+
+    override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
+        val dialog = super.onCreateDialog(savedInstanceState)
+        dialog.window?.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
+        return dialog
     }
 
     companion object {
@@ -51,7 +60,12 @@ class ResetReasonBottomSheet : BottomSheetDialogFragment() {
             binding.tvRecoveryCount.text = "Chances left: $remaining/2"
             binding.btnRecover.isEnabled = remaining > 0
 
+            binding.chipLazy.setOnClickListener { binding.etReason.setText("I got Lazy") }
+            binding.chipBusy.setOnClickListener { binding.etReason.setText("I was busy") }
+            binding.chipWeakness.setOnClickListener { binding.etReason.setText("Moment of weakness") }
+
             binding.btnSaveReason.setOnClickListener {
+                VibrationManager.vibrateMedium(requireContext())
                 val reason = binding.etReason.text.toString().trim()
                 if (reason.isEmpty()) {
                     Toast.makeText(context, "Please enter a reason", Toast.LENGTH_SHORT).show()
@@ -67,6 +81,7 @@ class ResetReasonBottomSheet : BottomSheetDialogFragment() {
             }
 
             binding.btnRecover.setOnClickListener {
+                VibrationManager.vibrateStrong(requireContext())
                 lifecycleScope.launch {
                     val yesterday = LocalDate.now().minusDays(1).format(DateTimeFormatter.ISO_LOCAL_DATE)
                     repo.recoverStreak(habit, yesterday)

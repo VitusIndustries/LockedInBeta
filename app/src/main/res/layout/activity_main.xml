@@ -38,7 +38,7 @@
                     android:id="@+id/toolbarTitle"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Streaks"
+                    android:text="LockedIn"
                     android:textSize="20sp"
                     android:textStyle="bold"
                     android:textColor="?attr/colorOnSurface" />
@@ -46,6 +46,18 @@
             </LinearLayout>
 
         </com.google.android.material.appbar.MaterialToolbar>
+
+        <com.google.android.material.tabs.TabLayout
+            android:id="@+id/tabLayout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="?attr/colorSurface"
+            app:tabIndicatorColor="@android:color/white"
+            app:tabIndicatorHeight="2dp"
+            app:tabSelectedTextColor="?attr/colorOnSurface"
+            app:tabTextColor="?attr/colorOnSurfaceVariant"
+            app:tabMode="fixed"
+            app:tabGravity="fill" />
 
     </com.google.android.material.appbar.AppBarLayout>
 
