@@ -49,27 +49,43 @@ class StatsFragment : BottomSheetDialogFragment() {
             binding.tvLongestStreak.text = "🏆 Longest: $longestText"
         }
 
-        statsViewModel.last30Days.observe(viewLifecycleOwner) { completedDates ->
-            // Use the standard orange for per-habit view or the new streak-based colors?
-            // Let's calculate the streak for this specific habit to show progress colors
-            lifecycleScope.launch {
-                val habitId = arguments?.getLong(ARG_HABIT_ID) ?: return@launch
-                val completions = repo.getLast90Completions(habitId)
-                    .map { java.time.LocalDate.parse(it.completedDate, java.time.format.DateTimeFormatter.ISO_LOCAL_DATE) }
-                    .toSet()
-                
-                val streakData = mutableMapOf<String, Int>()
-                completions.forEach { date ->
+        statsViewModel.last30Days.observe(viewLifecycleOwner) { _ ->
+            refreshCalendar()
+        }
+
+        binding.calendarView.onMonthChanged = { _ ->
+            refreshCalendar()
+        }
+    }
+
+    private fun refreshCalendar() {
+        val habitId = arguments?.getLong(ARG_HABIT_ID) ?: return
+        val repo = (requireActivity().application as StreakApplication).repository
+        
+        lifecycleScope.launch {
+            val month = binding.calendarView.getDisplayedMonth()
+            val completions = repo.getCompletionsForHabitOnce(habitId)
+                .map { java.time.LocalDate.parse(it.completedDate, java.time.format.DateTimeFormatter.ISO_LOCAL_DATE) }
+                .toSet()
+            
+            val streakData = mutableMapOf<String, Int>()
+            val startOfMonth = month.atDay(1)
+            val endOfMonth = month.atEndOfMonth()
+            
+            var checkDate = startOfMonth
+            while (!checkDate.isAfter(endOfMonth)) {
+                if (completions.contains(checkDate)) {
                     var streak = 0
-                    var check = date
-                    while (completions.contains(check)) {
+                    var temp = checkDate
+                    while (completions.contains(temp)) {
                         streak++
-                        check = check.minusDays(1)
+                        temp = temp.minusDays(1)
                     }
-                    streakData[date.format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE)] = streak
+                    streakData[checkDate.format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE)] = streak
                 }
-                binding.calendarView.setStreakData(streakData)
+                checkDate = checkDate.plusDays(1)
             }
+            binding.calendarView.setStreakData(streakData)
         }
     }
 

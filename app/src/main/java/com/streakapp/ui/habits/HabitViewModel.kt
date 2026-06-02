@@ -92,7 +92,7 @@ class HabitViewModel(application: Application) : AndroidViewModel(application) {
 
             // Force reset the last completed date to a long time ago and set streak to 0
             // This will trigger the checkExpiredStreaks logic in the fragment
-            repository.saveResetReason(habit, "Manual Dev Reset")
+            repository.saveResetReason(habit, "Manual Dev Anti-Habit")
             _message.postValue("Dev: ${habit.name} failed manually")
         }
     }

@@ -67,6 +67,17 @@ class HabitsFragment : Fragment() {
         binding.recyclerHabits.layoutManager = LinearLayoutManager(requireContext())
         binding.recyclerHabits.adapter = adapter
 
+        binding.recyclerHabits.addOnScrollListener(object : RecyclerView.OnScrollListener() {
+            private var hasSplashed = false
+            override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
+                if (!recyclerView.canScrollVertically(1) && dy > 0 && !hasSplashed) {
+                    hasSplashed = true
+                    showSubtleBottomSplash()
+                    recyclerView.postDelayed({ hasSplashed = false }, 10000)
+                }
+            }
+        })
+
         // Drag to Reorder & Swipe to Archive
         ItemTouchHelper(object : ItemTouchHelper.SimpleCallback(
             ItemTouchHelper.UP or ItemTouchHelper.DOWN, 
@@ -93,6 +104,24 @@ class HabitsFragment : Fragment() {
                 }
             }
         }).attachToRecyclerView(binding.recyclerHabits)
+    }
+
+    private fun showSubtleBottomSplash() {
+        binding.bottomSplash.visibility = View.VISIBLE
+        binding.bottomSplash.alpha = 0f
+        binding.bottomSplash.animate()
+            .alpha(0.4f)
+            .setDuration(600)
+            .withEndAction {
+                binding.bottomSplash.animate()
+                    .alpha(0f)
+                    .setDuration(1200)
+                    .withEndAction {
+                        binding.bottomSplash.visibility = View.GONE
+                    }
+                    .start()
+            }
+            .start()
     }
 
     private fun observeHabits() {

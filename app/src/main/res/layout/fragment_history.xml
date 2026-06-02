@@ -35,9 +35,10 @@
                     android:gravity="center_vertical">
 
                     <ImageView
+                        android:id="@+id/ivInsightIcon"
                         android:layout_width="32dp"
                         android:layout_height="32dp"
-                        android:src="@android:drawable/ic_dialog_info"
+                        android:src="@drawable/ic_lightbulb"
                         app:tint="@color/primary"
                         android:layout_marginEnd="12dp" />
 
@@ -68,13 +69,53 @@
                     android:orientation="vertical"
                     android:padding="16dp">
 
-                    <TextView
-                        android:layout_width="wrap_content"
+                    <RelativeLayout
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="Global Heatmap"
-                        android:textSize="14sp"
-                        android:textStyle="bold"
-                        android:layout_marginBottom="8dp"/>
+                        android:layout_marginBottom="8dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Global Heatmap"
+                            android:textSize="14sp"
+                            android:textStyle="bold"
+                            android:layout_centerVertical="true" />
+
+                        <LinearLayout
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_alignParentEnd="true"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal">
+
+                            <ImageButton
+                                android:id="@+id/btnPrevMonthGlobal"
+                                android:layout_width="32dp"
+                                android:layout_height="32dp"
+                                android:background="?attr/selectableItemBackgroundBorderless"
+                                android:src="@android:drawable/ic_media_previous"
+                                app:tint="?attr/colorOnSurfaceVariant" />
+
+                            <com.google.android.material.button.MaterialButton
+                                android:id="@+id/btnMonthPickerGlobal"
+                                style="@style/Widget.Material3.Button.TextButton"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Select Month"
+                                android:textSize="12sp" />
+
+                            <ImageButton
+                                android:id="@+id/btnNextMonthGlobal"
+                                android:layout_width="32dp"
+                                android:layout_height="32dp"
+                                android:background="?attr/selectableItemBackgroundBorderless"
+                                android:src="@android:drawable/ic_media_next"
+                                app:tint="?attr/colorOnSurfaceVariant" />
+
+                        </LinearLayout>
+
+                    </RelativeLayout>
 
                     <com.streakapp.ui.stats.StreakCalendarView
                         android:id="@+id/historyCalendar"
@@ -129,13 +170,53 @@
                         android:orientation="vertical"
                         android:padding="16dp">
 
-                        <TextView
-                            android:id="@+id/tvHabitDetailTitle"
-                            android:layout_width="wrap_content"
+                        <RelativeLayout
+                            android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:textSize="16sp"
-                            android:textStyle="bold"
-                            android:layout_marginBottom="16dp"/>
+                            android:layout_marginBottom="16dp">
+
+                            <TextView
+                                android:id="@+id/tvHabitDetailTitle"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:textSize="16sp"
+                                android:textStyle="bold"
+                                android:layout_centerVertical="true" />
+
+                            <LinearLayout
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_alignParentEnd="true"
+                                android:gravity="center_vertical"
+                                android:orientation="horizontal">
+
+                                <ImageButton
+                                    android:id="@+id/btnPrevMonthDetail"
+                                    android:layout_width="32dp"
+                                    android:layout_height="32dp"
+                                    android:background="?attr/selectableItemBackgroundBorderless"
+                                    android:src="@android:drawable/ic_media_previous"
+                                    app:tint="?attr/colorOnSurfaceVariant" />
+
+                                <com.google.android.material.button.MaterialButton
+                                    android:id="@+id/btnMonthPickerDetail"
+                                    style="@style/Widget.Material3.Button.TextButton"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="Select Month"
+                                    android:textSize="12sp" />
+
+                                <ImageButton
+                                    android:id="@+id/btnNextMonthDetail"
+                                    android:layout_width="32dp"
+                                    android:layout_height="32dp"
+                                    android:background="?attr/selectableItemBackgroundBorderless"
+                                    android:src="@android:drawable/ic_media_next"
+                                    app:tint="?attr/colorOnSurfaceVariant" />
+
+                            </LinearLayout>
+
+                        </RelativeLayout>
 
                         <com.streakapp.ui.stats.StreakCalendarView
                             android:id="@+id/habitDetailCalendar"
@@ -176,6 +257,46 @@
                             android:layout_marginVertical="16dp"/>
 
                         <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Anti-Habit Analysis"
+                            android:textSize="14sp"
+                            android:textStyle="bold"
+                            android:layout_marginBottom="12dp"/>
+
+                        <com.streakapp.ui.stats.AntiHabitRadarView
+                            android:id="@+id/radarAntiHabits"
+                            android:layout_width="match_parent"
+                            android:layout_height="240dp"
+                            android:layout_marginBottom="16dp"/>
+
+                        <LinearLayout
+                            android:id="@+id/layoutAntiHabitEmpty"
+                            android:layout_width="match_parent"
+                            android:layout_height="240dp"
+                            android:orientation="vertical"
+                            android:gravity="center"
+                            android:visibility="gone"
+                            android:layout_marginBottom="16dp">
+
+                            <ImageView
+                                android:layout_width="64dp"
+                                android:layout_height="64dp"
+                                android:src="@drawable/ic_li_logo"
+                                app:tint="@color/primary" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="12dp"
+                                android:text="You truly are locked in"
+                                android:textSize="16sp"
+                                android:textStyle="italic"
+                                android:textColor="?attr/colorOnSurface" />
+
+                        </LinearLayout>
+
+                        <TextView
                             android:id="@+id/tvMaxStreakRecord"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
@@ -186,7 +307,7 @@
                             android:id="@+id/tvStreakEndReason"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Last reset: --"
+                            android:text="Last anti-habit: --"
                             android:textStyle="italic"
                             android:textColor="?attr/colorError"/>
 

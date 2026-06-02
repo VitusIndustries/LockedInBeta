@@ -6,6 +6,8 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.RectF
 import android.util.AttributeSet
+import android.view.GestureDetector
+import android.view.MotionEvent
 import android.view.View
 import java.time.LocalDate
 import java.time.YearMonth
@@ -15,6 +17,35 @@ class StreakCalendarView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null
 ) : View(context, attrs) {
+
+    private val gestureDetector = GestureDetector(context, object : GestureDetector.SimpleOnGestureListener() {
+        override fun onFling(e1: MotionEvent?, e2: MotionEvent, velocityX: Float, velocityY: Float): Boolean {
+            if (e1 == null) return false
+            val diffX = e2.x - e1.x
+            val diffY = e2.y - e1.y
+            if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 100 && Math.abs(velocityX) > 100) {
+                if (diffX > 0) prevMonth() else nextMonth()
+                return true
+            }
+            return false
+        }
+
+        override fun onDown(e: MotionEvent): Boolean {
+            return true
+        }
+    })
+
+    override fun onTouchEvent(event: MotionEvent): Boolean {
+        val result = gestureDetector.onTouchEvent(event)
+        if (!result && event.action == MotionEvent.ACTION_UP) {
+            performClick()
+        }
+        return true
+    }
+
+    override fun performClick(): Boolean {
+        return super.performClick()
+    }
 
     private val dateFormatter = DateTimeFormatter.ISO_LOCAL_DATE
     private var streakData: Map<String, Int> = emptyMap()
@@ -34,8 +65,33 @@ class StreakCalendarView @JvmOverloads constructor(
         isFakeBoldText = true
     }
 
-    private val month = YearMonth.now()
+    private var displayedMonth = YearMonth.now()
     private val today = LocalDate.now()
+    
+    var onMonthChanged: ((YearMonth) -> Unit)? = null
+
+    fun nextMonth() {
+        displayedMonth = displayedMonth.plusMonths(1)
+        requestLayout()
+        invalidate()
+        onMonthChanged?.invoke(displayedMonth)
+    }
+
+    fun prevMonth() {
+        displayedMonth = displayedMonth.minusMonths(1)
+        requestLayout()
+        invalidate()
+        onMonthChanged?.invoke(displayedMonth)
+    }
+
+    fun setMonth(month: YearMonth) {
+        displayedMonth = month
+        requestLayout()
+        invalidate()
+        onMonthChanged?.invoke(displayedMonth)
+    }
+
+    fun getDisplayedMonth(): YearMonth = displayedMonth
 
     private fun isDarkMode(): Boolean {
         return (context.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES
@@ -54,8 +110,8 @@ class StreakCalendarView @JvmOverloads constructor(
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         val width = MeasureSpec.getSize(widthMeasureSpec)
         val cellSize = width / 7f
-        val firstDayOfWeek = (month.atDay(1).dayOfWeek.value - 1) % 7
-        val rows = (month.lengthOfMonth() + firstDayOfWeek + 6) / 7
+        val firstDayOfWeek = (displayedMonth.atDay(1).dayOfWeek.value - 1) % 7
+        val rows = (displayedMonth.lengthOfMonth() + firstDayOfWeek + 6) / 7
         val height = (cellSize * rows + 150).toInt() // Increased padding for header
         setMeasuredDimension(width, height)
     }
@@ -66,8 +122,8 @@ class StreakCalendarView @JvmOverloads constructor(
         val radius = cellSize * 0.45f // Increased from 0.38f to fill more space
 
         // Draw month name at the top
-        val monthName = month.month.getDisplayName(java.time.format.TextStyle.FULL, java.util.Locale.US)
-        val year = month.year.toString()
+        val monthName = displayedMonth.month.getDisplayName(java.time.format.TextStyle.FULL, java.util.Locale.US)
+        val year = displayedMonth.year.toString()
         paintHeader.textAlign = Paint.Align.LEFT 
         canvas.drawText("$monthName $year", 0f, 40f, paintHeader)
 
@@ -78,8 +134,8 @@ class StreakCalendarView @JvmOverloads constructor(
             canvas.drawText(d, cellSize * i + cellSize / 2, 100f, paintHeader)
         }
 
-        val firstDayOfWeek = (month.atDay(1).dayOfWeek.value - 1) % 7
-        val totalDays = month.lengthOfMonth()
+        val firstDayOfWeek = (displayedMonth.atDay(1).dayOfWeek.value - 1) % 7
+        val totalDays = displayedMonth.lengthOfMonth()
 
         for (day in 1..totalDays) {
             val index = firstDayOfWeek + day - 1
@@ -90,9 +146,9 @@ class StreakCalendarView @JvmOverloads constructor(
             val cy = 130 + row * cellSize + cellSize / 2
             val rect = RectF(cx - radius, cy - radius, cx + radius, cy + radius)
 
-            val date = month.atDay(day).format(dateFormatter)
+            val date = displayedMonth.atDay(day).format(dateFormatter)
             val currentStreak = streakData[date] ?: 0
-            val isToday = month.atDay(day) == today
+            val isToday = displayedMonth.atDay(day) == today
 
             val cellColor = when {
                 currentStreak >= 30 -> Color.parseColor("#F44336")

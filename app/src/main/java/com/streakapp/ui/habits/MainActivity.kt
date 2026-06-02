@@ -10,6 +10,7 @@ import android.os.VibrationEffect
 import android.os.Vibrator
 import android.view.Menu
 import android.view.MenuItem
+import android.view.View
 import android.widget.TextView
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
@@ -95,6 +96,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showToolbarMessage(message: String, color: Int, durationMs: Long = 3000) {
+        // Temporarily hide menu items to make room for long quotes
+        binding.toolbar.menu.setGroupVisible(0, false)
+        
         binding.toolbarBrandContainer.animate()
             .alpha(0f)
             .setDuration(400)
@@ -102,6 +106,7 @@ class MainActivity : AppCompatActivity() {
                 binding.toolbarLogo.visibility = android.view.View.GONE
                 binding.toolbarTitle.text = message
                 binding.toolbarTitle.setTextColor(color)
+                binding.toolbarTitle.textSize = 14f // Smaller text for longer quotes
                 binding.toolbarTitle.typeface = ResourcesCompat.getFont(this, R.font.inter_bold)
                 
                 binding.toolbarBrandContainer.animate()
@@ -115,6 +120,7 @@ class MainActivity : AppCompatActivity() {
                                 .withEndAction {
                                     binding.toolbarLogo.visibility = android.view.View.VISIBLE
                                     binding.toolbarTitle.text = "LockedIn"
+                                    binding.toolbarTitle.textSize = 20f // Back to normal
                                     binding.toolbarTitle.setTextColor(
                                         com.google.android.material.color.MaterialColors.getColor(binding.toolbarTitle, com.google.android.material.R.attr.colorOnSurface)
                                     )
@@ -123,6 +129,10 @@ class MainActivity : AppCompatActivity() {
                                     binding.toolbarBrandContainer.animate()
                                         .alpha(1f)
                                         .setDuration(400)
+                                        .withEndAction {
+                                            // Show menu items again
+                                            binding.toolbar.menu.setGroupVisible(0, true)
+                                        }
                                         .start()
                                 }.start()
                         }, durationMs)
@@ -165,20 +175,37 @@ class MainActivity : AppCompatActivity() {
     private fun startQuoteAnimation() {
         val prefs = getSharedPreferences("streak_prefs", Context.MODE_PRIVATE)
         val openCount = prefs.getInt("app_open_count", 0) + 1
-        prefs.edit().putInt("app_open_count", openCount).apply()
+        prefs.edit()
+            .putInt("app_open_count", openCount)
+            .putLong("last_open_timestamp", System.currentTimeMillis())
+            .apply()
 
         val isMilestone = openCount == 10 || openCount == 20 || openCount == 30
         val showEasterEgg = isMilestone || Math.random() < 0.5 
 
         val quotes = listOf(
-            "Don't stop now.", "You showed up.", "Keep the fire alive.",
-            "One more day.", "Still here. Still going.", "Don't break the chain.",
-            "You know what to do.", "Make it count.", "Stay consistent.",
-            "Do it anyway.", "No days off.", "Prove it to yourself.",
-            "The streak doesn't lie.", "Lock in.", "Built different."
+            "The pain of discipline is far less than the pain of regret.",
+            "You don't have to be great to start, but you have to start to be great.",
+            "Success is the sum of small efforts, repeated day in and day out.",
+            "It does not matter how slowly you go as long as you do not stop.",
+            "The secret of your future is hidden in your daily routine.",
+            "Consistency is what transforms average into excellence.",
+            "Do something today that your future self will thank you for.",
+            "Your habits will either make you or break you. Choose wisely.",
+            "Small daily improvements over time lead to stunning results.",
+            "The only way to achieve the impossible is to believe it is possible.",
+            "Don't stop when you're tired. Stop when you're done.",
+            "Hard work beats talent when talent doesn't work hard.",
+            "Action is the foundational key to all success.",
+            "Discipline is doing what needs to be done, even if you don't want to.",
+            "The best time to plant a tree was 20 years ago. The second best time is now."
         )
         val easterEggs = listOf(
-            "do it Kakarot", "This is my peak", "Domain Expansion", "Cesaer!!!!!"
+            "Strength is the only thing that matters in this world. Everything else is just a delusion for the weak.",
+            "If you don't like your destiny, don't accept it. Instead, have the courage to change it.",
+            "It’s not the face that makes someone a monster; it’s the choices they make with their lives.",
+            "Power is not will, it is the phenomenon of physically making things happen.",
+            "I must go beyond my limits. That is what it means to be a hero!"
         )
 
         val message = if (showEasterEgg) easterEggs.random() else quotes.random()
@@ -220,6 +247,12 @@ class MainActivity : AppCompatActivity() {
                 true
             }
             R.id.action_settings -> {
+                // Find the settings view in toolbar and rotate it
+                binding.toolbar.findViewById<View>(R.id.action_settings)?.animate()
+                    ?.rotationBy(360f)
+                    ?.setDuration(500)
+                    ?.start()
+
                 SettingsBottomSheet().show(supportFragmentManager, "Settings")
                 true
             }

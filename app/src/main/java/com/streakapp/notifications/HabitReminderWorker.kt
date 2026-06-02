@@ -36,10 +36,14 @@ class HabitReminderWorker(
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val streakMsg = if (habit.currentStreak > 0)
-            "Keep your ${habit.currentStreak}-day streak alive! 🔥"
-        else
-            "Start a new streak today!"
+        val streakMsg = when {
+            habit.targetCount > 1 && habit.currentCountToday > 0 && habit.currentCountToday < habit.targetCount -> {
+                val remaining = habit.targetCount - habit.currentCountToday
+                "You're almost there! Only $remaining more to complete ${habit.name} today."
+            }
+            habit.currentStreak > 0 -> "Keep your ${habit.currentStreak}-day streak alive! 🔥"
+            else -> "Start a new streak today!"
+        }
 
         val notification = NotificationCompat.Builder(context, StreakApplication.CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_streak_notification)

@@ -14,7 +14,7 @@
             android:id="@+id/tvTitle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Streak Expired! 🥀"
+            android:text="Anti-Habit Detected! 🥀"
             android:textSize="22sp"
             android:textStyle="bold"
             android:fontFamily="@font/inter_bold"
@@ -24,14 +24,14 @@
             android:id="@+id/tvSubtitle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Your streak for [Habit] has ended. Why did you fall off?"
+            android:text="Your streak for [Habit] has ended. Identify your anti-habit:"
             android:textSize="16sp"
             android:layout_marginBottom="16dp" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Quick Reasons"
+            android:text="Common Anti-Habits"
             android:textSize="14sp"
             android:textStyle="bold"
             android:layout_marginBottom="8dp" />
@@ -68,7 +68,7 @@
         <com.google.android.material.textfield.TextInputLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="Enter reason (e.g. forgot, too tired...)"
+            android:hint="Name your anti-habit..."
             style="@style/Widget.Material3.TextInputLayout.OutlinedBox">
 
             <com.google.android.material.textfield.TextInputEditText

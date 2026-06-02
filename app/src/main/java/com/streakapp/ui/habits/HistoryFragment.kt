@@ -42,13 +42,53 @@ class HistoryFragment : Fragment() {
     private fun refreshData() {
         val repo = (requireActivity().application as StreakApplication).repository
         lifecycleScope.launch {
-            val streakData = repo.getGlobalStreakData()
+            val month = binding.historyCalendar.getDisplayedMonth()
+            val streakData = repo.getGlobalStreakData(month)
             binding.historyCalendar.setStreakData(streakData)
         }
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        
+        binding.historyCalendar.onMonthChanged = { _ ->
+            refreshData()
+        }
+        
+        binding.btnMonthPickerGlobal.setOnClickListener {
+            showMonthPicker(it) { selectedMonth ->
+                binding.historyCalendar.setMonth(selectedMonth)
+            }
+        }
+        
+        binding.btnPrevMonthGlobal.setOnClickListener {
+            binding.historyCalendar.prevMonth()
+        }
+        
+        binding.btnNextMonthGlobal.setOnClickListener {
+            binding.historyCalendar.nextMonth()
+        }
+
+        binding.btnMonthPickerDetail.setOnClickListener {
+            showMonthPicker(it) { selectedMonth ->
+                binding.habitDetailCalendar.setMonth(selectedMonth)
+            }
+        }
+        
+        binding.btnPrevMonthDetail.setOnClickListener {
+            binding.habitDetailCalendar.prevMonth()
+        }
+        
+        binding.btnNextMonthDetail.setOnClickListener {
+            binding.habitDetailCalendar.nextMonth()
+        }
+        
+        binding.habitDetailCalendar.onMonthChanged = { _ ->
+            val habits = viewModel.allHabits.value
+            val currentHabitName = binding.habitSelector.text.toString()
+            val habit = habits?.find { "${it.emoji} ${it.name}" == currentHabitName }
+            if (habit != null) showHabitDetails(habit)
+        }
         
         // Setup Habit Selector
         viewModel.allHabits.observe(viewLifecycleOwner) { habits ->
@@ -63,6 +103,25 @@ class HistoryFragment : Fragment() {
         }
     }
 
+    private fun showMonthPicker(view: View, onMonthSelected: (java.time.YearMonth) -> Unit) {
+        val popup = androidx.appcompat.widget.PopupMenu(requireContext(), view)
+        val currentMonth = java.time.YearMonth.now()
+        
+        // Show last 12 months
+        for (i in 0 until 12) {
+            val month = currentMonth.minusMonths(i.toLong())
+            val label = "${month.month.getDisplayName(java.time.format.TextStyle.FULL, java.util.Locale.US)} ${month.year}"
+            popup.menu.add(0, i, i, label)
+        }
+        
+        popup.setOnMenuItemClickListener { item ->
+            val selectedMonth = currentMonth.minusMonths(item.itemId.toLong())
+            onMonthSelected(selectedMonth)
+            true
+        }
+        popup.show()
+    }
+
     private fun showHabitDetails(habit: Habit) {
         binding.individualStatsContainer.visibility = View.VISIBLE
         binding.tvHabitDetailTitle.text = habit.name
@@ -74,7 +133,7 @@ class HistoryFragment : Fragment() {
             val lastDate = LocalDate.parse(lastCompleted)
             if (lastDate.isBefore(LocalDate.now().minusDays(1))) {
                 val reason = habit.lastResetReason ?: "Missed check-in on ${lastDate.plusDays(1)}"
-                binding.tvStreakEndReason.text = "Last reset: $reason"
+                binding.tvStreakEndReason.text = "Last anti-habit: $reason"
             } else {
                 binding.tvStreakEndReason.text = "Status: Streak Active! 🔥"
             }
@@ -87,43 +146,75 @@ class HistoryFragment : Fragment() {
             binding.cardInsights.visibility = View.VISIBLE
             val failureDay = repo.getFailurePattern(habit.id)
             val toughestDay = repo.getToughestDayOfWeek(habit.id)
+            val positiveInsight = repo.getPositiveInsight(habit)
+            val destructiveReason = repo.getMostDestructiveAntiHabit(habit.id)
             
             val insight = when {
+                // Destructive pattern takes priority
+                destructiveReason != null -> "Avoid $destructiveReason as this is your most destructive anti-habit."
+                // Warning patterns
                 failureDay != null -> "You usually break ${habit.name} around day $failureDay. Tomorrow is day $failureDay. Push through it."
                 toughestDay != null -> {
                     val dayName = toughestDay.name.lowercase().replaceFirstChar { it.uppercase() }
                     "You often struggle with ${habit.name} on $dayName. Stay focused today!"
                 }
+                // Positive/Motivational insights
+                positiveInsight != null -> positiveInsight
                 else -> "Keep going — insights appear as your data grows"
             }
             binding.tvInsightText.text = insight
+            
+            // Subtle pulse for the lightbulb
+            binding.cardInsights.findViewById<View>(com.lockedinbeta.R.id.ivInsightIcon)?.let { icon ->
+                icon.animate().scaleX(1.15f).scaleY(1.15f).setDuration(300).withEndAction {
+                    icon.animate().scaleX(1.0f).scaleY(1.0f).setDuration(400).start()
+                }.start()
+            }
 
             val reasonCounts = repo.getReasonCounts(habit.id)
             if (reasonCounts.isNotEmpty()) {
+                // Populate Radar Chart
+                binding.radarAntiHabits.visibility = View.VISIBLE
+                binding.layoutAntiHabitEmpty.visibility = View.GONE
+                
+                val chartData = reasonCounts.map { it.reason to it.count }
+                binding.radarAntiHabits.setData(chartData)
+
                 val reasonSummary = reasonCounts.joinToString("\n") { "${it.reason}: ${it.count} times" }
-                binding.tvStreakEndReason.text = binding.tvStreakEndReason.text.toString() + "\n\nAll Reset Reasons:\n" + reasonSummary
+                binding.tvStreakEndReason.text = binding.tvStreakEndReason.text.toString() + "\n\nAll Anti-Habits:\n" + reasonSummary
+            } else {
+                binding.radarAntiHabits.visibility = View.GONE
+                binding.layoutAntiHabitEmpty.visibility = View.VISIBLE
+                binding.radarAntiHabits.setData(emptyList())
             }
 
-            val completions = repo.getLast90Completions(habit.id)
+            val month = binding.habitDetailCalendar.getDisplayedMonth()
+            val completions = repo.getCompletionsForHabitOnce(habit.id)
                 .map { LocalDate.parse(it.completedDate, DateTimeFormatter.ISO_LOCAL_DATE) }
                 .toSet()
             
             val streakData = mutableMapOf<String, Int>()
-            completions.forEach { date ->
-                var streak = 0
-                var check = date
-                while (completions.contains(check)) {
-                    streak++
-                    check = check.minusDays(1)
+            val startOfMonth = month.atDay(1)
+            val endOfMonth = month.atEndOfMonth()
+            
+            var checkDate = startOfMonth
+            while (!checkDate.isAfter(endOfMonth)) {
+                if (completions.contains(checkDate)) {
+                    var streak = 0
+                    var temp = checkDate
+                    while (completions.contains(temp)) {
+                        streak++
+                        temp = temp.minusDays(1)
+                    }
+                    streakData[checkDate.format(DateTimeFormatter.ISO_LOCAL_DATE)] = streak
                 }
-                streakData[date.format(DateTimeFormatter.ISO_LOCAL_DATE)] = streak
+                checkDate = checkDate.plusDays(1)
             }
             binding.habitDetailCalendar.setStreakData(streakData)
 
-            // Calculate Completion Rate (30d)
-            val thirtyDaysAgo = LocalDate.now().minusDays(30)
-            val recentCompletions = completions.count { !it.isBefore(thirtyDaysAgo) }
-            val rate = (recentCompletions / 30f * 100).toInt()
+            // Calculate Completion Rate (Selected Month)
+            val monthCompletions = completions.count { !it.isBefore(startOfMonth) && !it.isAfter(endOfMonth) }
+            val rate = (monthCompletions.toFloat() / month.lengthOfMonth() * 100).toInt()
             binding.progressCompletion.progress = rate
             binding.tvCompletionPercent.text = "$rate%"
         }

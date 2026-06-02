@@ -73,6 +73,9 @@ class HabitRepository(
     suspend fun getLast90Completions(habitId: Long): List<HabitCompletion> =
         dao.getLast90Completions(habitId)
 
+    suspend fun getCompletionsForHabitOnce(habitId: Long): List<HabitCompletion> =
+        dao.getCompletionsForHabitOnce(habitId)
+
     /**
      * Toggle today's completion. Returns true if now completed, false if uncompleted.
      */
@@ -231,6 +234,75 @@ class HabitRepository(
         return if (topDay != null && topDay.value >= 2) DayOfWeek.of(topDay.key) else null
     }
 
+    suspend fun getPositiveInsight(habit: Habit): String? {
+        // 1. Record Streak
+        if (habit.currentStreak > 1 && habit.currentStreak >= habit.longestStreak) {
+            return "You've completed this habit ${habit.currentStreak} days in a row — your best ever!"
+        }
+
+        // 2. Milestone approach
+        val milestones = listOf(7, 14, 30, 60, 90, 100, 365)
+        for (m in milestones) {
+            if (habit.currentStreak < m && habit.currentStreak >= m - 3 && habit.currentStreak > 0) {
+                val diff = m - habit.currentStreak
+                return "You're $diff days from your next milestone ($m days)."
+            }
+        }
+
+        // 3. Weekly completion rate
+        val completions = dao.getLast90Completions(habit.id)
+        val today = LocalDate.now()
+        val last7DaysCount = completions.count { 
+            val date = LocalDate.parse(it.completedDate, dateFormatter)
+            !date.isBefore(today.minusDays(7))
+        }
+        if (last7DaysCount == 6 && !completions.any { it.completedDate == today.format(dateFormatter) }) {
+            return "You've hit 80% of your weekly goal — one more day seals it."
+        }
+
+        // 4. Time-based pattern
+        if (completions.size >= 5) {
+            val weekdayCompletions = completions.filter {
+                val date = LocalDate.parse(it.completedDate, dateFormatter)
+                date.dayOfWeek.value in 1..5
+            }
+            if (weekdayCompletions.size >= 3 && !completions.any { it.completedDate == today.format(dateFormatter) }) {
+                val avgHour = weekdayCompletions.map { 
+                    val instant = java.time.Instant.ofEpochMilli(it.completedAt)
+                    java.time.LocalDateTime.ofInstant(instant, java.time.ZoneId.systemDefault()).hour
+                }.average()
+                
+                val currentHour = java.time.LocalTime.now().hour
+                if (currentHour > avgHour + 2) {
+                    return "You tend to complete this habit earlier on weekdays. Today's running late."
+                }
+            }
+        }
+
+        // 5. Resilience/Recovery
+        val allCompletions = dao.getCompletionsForHabitOnce(habit.id)
+            .map { LocalDate.parse(it.completedDate, dateFormatter) }
+            .sorted()
+        
+        if (allCompletions.size >= 3) {
+            var maxGap = 0L
+            for (i in 0 until allCompletions.size - 1) {
+                val gap = java.time.temporal.ChronoUnit.DAYS.between(allCompletions[i], allCompletions[i+1]) - 1
+                if (gap > maxGap) maxGap = gap
+            }
+            if (maxGap in 1..3) {
+                return "Your longest gap before bouncing back was $maxGap days. You're resilient."
+            }
+        }
+
+        return null
+    }
+
+    suspend fun getMostDestructiveAntiHabit(habitId: Long): String? {
+        val counts = resetDao.getReasonCountsForHabit(habitId)
+        return counts.firstOrNull()?.reason
+    }
+
     suspend fun getReasonCounts(habitId: Long) = resetDao.getReasonCountsForHabit(habitId)
 
     suspend fun recoverStreak(habit: Habit, date: String) {
@@ -255,21 +327,22 @@ class HabitRepository(
     }
 
     /**
-     * Calculates the best streak for each day in the current month.
+     * Calculates the best streak for each day in the provided month.
      */
-    suspend fun getGlobalStreakData(): Map<String, Int> {
+    suspend fun getGlobalStreakData(month: java.time.YearMonth = java.time.YearMonth.now()): Map<String, Int> {
         val habits = dao.getAllHabitsOnce()
         val allCompletions = mutableMapOf<Long, Set<LocalDate>>()
         
         habits.forEach { habit ->
-            allCompletions[habit.id] = dao.getLast90Completions(habit.id)
+            // Use 180 days for broader history when viewing previous months
+            allCompletions[habit.id] = dao.getCompletionsForHabitOnce(habit.id)
                 .map { LocalDate.parse(it.completedDate, dateFormatter) }
                 .toSet()
         }
 
         val result = mutableMapOf<String, Int>()
-        val startOfMonth = LocalDate.now().withDayOfMonth(1)
-        val endOfMonth = LocalDate.now().withDayOfMonth(LocalDate.now().lengthOfMonth())
+        val startOfMonth = month.atDay(1)
+        val endOfMonth = month.atEndOfMonth()
 
         var current = startOfMonth
         while (!current.isAfter(endOfMonth)) {
