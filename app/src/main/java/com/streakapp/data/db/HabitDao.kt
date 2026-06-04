@@ -56,4 +56,7 @@ interface HabitDao {
 
     @Query("DELETE FROM habit_completions WHERE habitId = :habitId")
     suspend fun deleteCompletionsForHabit(habitId: Long)
+
+    @Query("SELECT * FROM habit_completions WHERE completedDate = :date")
+    suspend fun getCompletionsByDate(date: String): List<HabitCompletion>
 }

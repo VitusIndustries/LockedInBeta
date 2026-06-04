@@ -26,9 +26,17 @@ class HabitReminderWorker(
         val repo = (context.applicationContext as StreakApplication).repository
         val habit = repo.getHabitById(habitId) ?: return Result.success()
 
-        // Don't notify if already done today
-        val today = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)
+        val todayDate = LocalDate.now()
+        val today = todayDate.format(DateTimeFormatter.ISO_LOCAL_DATE)
+        
+        // 1. Don't notify if already done today
         if (habit.lastCompletedDate == today) return Result.success()
+
+        // 2. Don't notify if today is a rest day
+        val dayOfWeek = todayDate.dayOfWeek.value
+        val bit = 1 shl (dayOfWeek - 1)
+        val isDayActive = (habit.activeDays and bit) != 0
+        if (!isDayActive) return Result.success()
 
         val openIntent = PendingIntent.getActivity(
             context, habitId.toInt(),

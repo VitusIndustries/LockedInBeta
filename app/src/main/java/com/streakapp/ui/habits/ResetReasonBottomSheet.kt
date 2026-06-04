@@ -13,6 +13,7 @@ import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import com.lockedinbeta.databinding.BottomSheetResetReasonBinding
 import com.streakapp.StreakApplication
 import com.streakapp.VibrationManager
+import com.streakapp.SoundManager
 import com.streakapp.data.model.Habit
 import com.streakapp.data.model.HabitCompletion
 import kotlinx.coroutines.launch
@@ -60,11 +61,12 @@ class ResetReasonBottomSheet : BottomSheetDialogFragment() {
             binding.tvRecoveryCount.text = "Chances left: $remaining/2"
             binding.btnRecover.isEnabled = remaining > 0
 
-            binding.chipLazy.setOnClickListener { binding.etReason.setText("I got Lazy") }
-            binding.chipBusy.setOnClickListener { binding.etReason.setText("I was busy") }
-            binding.chipWeakness.setOnClickListener { binding.etReason.setText("Moment of weakness") }
+            binding.chipLazy.setOnClickListener { SoundManager.playTick(); binding.etReason.setText("I got Lazy") }
+            binding.chipBusy.setOnClickListener { SoundManager.playTick(); binding.etReason.setText("I was busy") }
+            binding.chipWeakness.setOnClickListener { SoundManager.playTick(); binding.etReason.setText("Moment of weakness") }
 
             binding.btnSaveReason.setOnClickListener {
+                SoundManager.playTick()
                 VibrationManager.vibrateMedium(requireContext())
                 val reason = binding.etReason.text.toString().trim()
                 if (reason.isEmpty()) {
@@ -75,12 +77,14 @@ class ResetReasonBottomSheet : BottomSheetDialogFragment() {
                 lifecycleScope.launch {
                     // Update habit with reason and reset streak (logic handled by recalculateStreak usually)
                     // But here we explicitly set the reason.
+                    SoundManager.playFail()
                     repo.saveResetReason(habit, reason)
                     dismiss()
                 }
             }
 
             binding.btnRecover.setOnClickListener {
+                SoundManager.playTick()
                 VibrationManager.vibrateStrong(requireContext())
                 lifecycleScope.launch {
                     val yesterday = LocalDate.now().minusDays(1).format(DateTimeFormatter.ISO_LOCAL_DATE)

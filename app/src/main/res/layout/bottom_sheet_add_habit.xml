@@ -12,6 +12,7 @@
         android:padding="24dp">
 
         <TextView
+            android:id="@+id/tvAddHabitTitle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="New Habit"
@@ -19,6 +20,29 @@
             android:textStyle="bold"
             android:textColor="@color/on_surface"
             android:layout_marginBottom="20dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Suggestions"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:textColor="@color/on_surface_variant"
+            android:layout_marginBottom="8dp" />
+
+        <HorizontalScrollView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:scrollbars="none"
+            android:layout_marginBottom="16dp">
+            <com.google.android.material.chip.ChipGroup
+                android:id="@+id/chipGroupHabitSuggestions"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                app:singleSelection="true">
+                <!-- Programmatically populated -->
+            </com.google.android.material.chip.ChipGroup>
+        </HorizontalScrollView>
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -151,6 +175,82 @@
                 android:selectAllOnFocus="true" />
 
         </com.google.android.material.textfield.TextInputLayout>
+
+        <TextView
+            android:id="@+id/tvActiveDaysHint"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="Repeat on (Daily by default)"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:textColor="@color/primary" />
+
+        <com.google.android.material.button.MaterialButtonToggleGroup
+            android:id="@+id/toggleDays"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            app:singleSelection="false">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnMon"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:padding="0dp"
+                android:text="M" />
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnTue"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:padding="0dp"
+                android:text="T" />
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnWed"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:padding="0dp"
+                android:text="W" />
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnThu"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:padding="0dp"
+                android:text="T" />
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnFri"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:padding="0dp"
+                android:text="F" />
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnSat"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:padding="0dp"
+                android:text="S" />
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnSun"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:padding="0dp"
+                android:text="S" />
+
+        </com.google.android.material.button.MaterialButtonToggleGroup>
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnSaveHabit"

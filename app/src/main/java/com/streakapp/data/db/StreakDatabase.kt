@@ -10,7 +10,7 @@ import com.streakapp.data.model.HabitReset
 
 @Database(
     entities = [Habit::class, HabitCompletion::class, HabitReset::class],
-    version = 7,
+    version = 8,
     exportSchema = false
 )
 abstract class StreakDatabase : RoomDatabase() {

@@ -8,6 +8,8 @@ import com.streakapp.data.model.Habit
 import com.streakapp.data.repository.HabitRepository
 import com.streakapp.ui.widget.HabitWidget
 import com.streakapp.DevModeManager
+import com.streakapp.SoundManager
+import com.streakapp.notifications.NotificationScheduler
 import androidx.glance.appwidget.updateAll
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -46,9 +48,20 @@ class HabitViewModel(application: Application) : AndroidViewModel(application) {
     private val _message = MutableLiveData<String>()
     val message: LiveData<String> = _message
 
-    fun addHabit(name: String, emoji: String, notifHour: Int, notifMinute: Int, priority: Int = 1, targetCount: Int = 1) {
+    fun addHabit(name: String, emoji: String, notifHour: Int, notifMinute: Int, priority: Int = 1, targetCount: Int = 1, activeDays: Int = 127) {
         viewModelScope.launch {
-            repository.addHabit(name, emoji, notifHour, notifMinute, priority, targetCount)
+            val id = repository.addHabit(name, emoji, notifHour, notifMinute, priority, targetCount, activeDays)
+            repository.getHabitById(id)?.let {
+                NotificationScheduler.scheduleNotification(getApplication(), it)
+            }
+        }
+    }
+
+    fun updateHabitDetails(habit: Habit) {
+        viewModelScope.launch {
+            repository.updateHabit(habit)
+            NotificationScheduler.scheduleNotification(getApplication(), habit)
+            _sortOrder.postValue(_sortOrder.value)
         }
     }
 
@@ -108,10 +121,23 @@ class HabitViewModel(application: Application) : AndroidViewModel(application) {
             HabitWidget().updateAll(getApplication<StreakApplication>())
 
             if (completed) {
-                val streak = repository.getHabitById(habit.id)?.currentStreak ?: 0
+                val updatedHabit = repository.getHabitById(habit.id)
+                val streak = updatedHabit?.currentStreak ?: 0
+                
+                // Play Sound
+                if (streak == 7 || streak == 14 || streak == 30 || streak == 60 || streak == 90 || streak == 100 || streak == 365) {
+                    SoundManager.playMilestone(streak)
+                } else {
+                    SoundManager.playClick()
+                }
+
                 _message.postValue("${habit.emoji} ${habit.name} done! 🔥 $streak day streak")
             } else {
-                _message.postValue("Unchecked ${habit.name}")
+                if (habit.targetCount > 1) {
+                    SoundManager.playTick()
+                } else {
+                    _message.postValue("Unchecked ${habit.name}")
+                }
             }
         }
     }

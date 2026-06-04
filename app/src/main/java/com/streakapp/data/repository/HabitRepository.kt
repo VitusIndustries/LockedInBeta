@@ -26,7 +26,7 @@ class HabitRepository(
 
     suspend fun getHabitById(id: Long): Habit? = dao.getHabitById(id)
 
-    suspend fun addHabit(name: String, emoji: String, notifHour: Int, notifMinute: Int, priority: Int = 1, targetCount: Int = 1): Long {
+    suspend fun addHabit(name: String, emoji: String, notifHour: Int, notifMinute: Int, priority: Int = 1, targetCount: Int = 1, activeDays: Int = 127): Long {
         val habits = dao.getAllHabitsOnce()
         val nextOrder = (habits.maxOfOrNull { it.manualOrder } ?: -1) + 1
         val habit = Habit(
@@ -36,7 +36,8 @@ class HabitRepository(
             notificationMinute = notifMinute,
             priority = priority,
             manualOrder = nextOrder,
-            targetCount = targetCount
+            targetCount = targetCount,
+            activeDays = activeDays
         )
         return dao.insertHabit(habit)
     }
@@ -58,6 +59,10 @@ class HabitRepository(
 
     suspend fun updateHabitPriority(habit: Habit, priority: Int) {
         dao.updateHabit(habit.copy(priority = priority))
+    }
+
+    suspend fun updateHabit(habit: Habit) {
+        dao.updateHabit(habit)
     }
 
     suspend fun updateHabitOrders(habits: List<Habit>) {
@@ -130,6 +135,12 @@ class HabitRepository(
         return dao.getCompletionForDate(habitId, today) != null
     }
 
+    private fun isDayActive(habit: Habit, date: LocalDate): Boolean {
+        val dayOfWeek = date.dayOfWeek.value // 1 (Mon) to 7 (Sun)
+        val bit = 1 shl (dayOfWeek - 1)
+        return (habit.activeDays and bit) != 0
+    }
+
     private suspend fun recalculateStreak(habit: Habit, isVacationMode: Boolean) {
         val todayDate = if (DevModeManager.isDevModeEnabled) DevModeManager.getDevToday() else LocalDate.now()
         
@@ -140,32 +151,43 @@ class HabitRepository(
         var streak = 0
         var check = todayDate
 
-        // If not done today, start checking from yesterday
+        // If today is NOT active and NOT completed, we skip it and look at yesterday.
+        // If today is active but NOT completed, the streak might be broken.
         if (!completions.contains(check)) {
-            val yesterday = check.minusDays(1)
-            if (!completions.contains(yesterday) && !isVacationMode) {
-                // Streak is broken
-                streak = 0
+            if (!isDayActive(habit, check)) {
+                check = check.minusDays(1)
             } else {
-                check = yesterday
+                val yesterday = check.minusDays(1)
+                if (!completions.contains(yesterday) && !isVacationMode) {
+                    // Check if yesterday was active. If not, look further back.
+                    var tempCheck = yesterday
+                    while (!isDayActive(habit, tempCheck) && tempCheck.isAfter(todayDate.minusDays(7))) {
+                        tempCheck = tempCheck.minusDays(1)
+                    }
+                    if (!completions.contains(tempCheck)) {
+                         streak = 0
+                    } else {
+                        check = tempCheck
+                    }
+                } else {
+                    check = yesterday
+                }
             }
         }
 
-        // Count backward
+        // Improved count backward: skip inactive days
         if (completions.contains(check) || isVacationMode) {
-            while (completions.contains(check) || isVacationMode) {
-                if (completions.contains(check)) {
+            var tempCheck = check
+            while (streak < 365) { // Safety limit
+                if (completions.contains(tempCheck)) {
                     streak++
-                } else if (check.isBefore(todayDate.minusDays(90))) {
-                    break // safety limit
+                } else if (isDayActive(habit, tempCheck) && !isVacationMode) {
+                    break // Broken streak
                 }
                 
-                check = check.minusDays(1)
+                tempCheck = tempCheck.minusDays(1)
                 
-                // If we've gone past the oldest completion and not in vacation mode, stop
-                if (!isVacationMode && (completions.isEmpty() || check.isBefore(completions.last()))) {
-                    break
-                }
+                if (tempCheck.isBefore(todayDate.minusDays(180))) break
             }
         }
 
@@ -305,6 +327,13 @@ class HabitRepository(
 
     suspend fun getReasonCounts(habitId: Long) = resetDao.getReasonCountsForHabit(habitId)
 
+    suspend fun getHabitsCompletedOnDate(date: String): List<Habit> {
+        val completions = dao.getCompletionsByDate(date)
+        val habitIds = completions.map { it.habitId }.distinct()
+        val allHabits = dao.getAllHabitsOnce()
+        return allHabits.filter { habitIds.contains(it.id) }
+    }
+
     suspend fun recoverStreak(habit: Habit, date: String) {
         dao.insertCompletion(HabitCompletion(habitId = habit.id, completedDate = date))
         val updatedHabit = habit.copy(recoveryChancesUsed = habit.recoveryChancesUsed + 1)
@@ -313,28 +342,43 @@ class HabitRepository(
 
     suspend fun checkExpiredStreaks(): List<Habit> {
         val habits = dao.getAllHabitsOnce()
-        val yesterday = LocalDate.now().minusDays(1).format(dateFormatter)
-        val today = LocalDate.now().format(dateFormatter)
+        val today = LocalDate.now()
         
         return habits.filter { habit ->
-            val lastDate = habit.lastCompletedDate
-            // Streak is dead if not completed today AND last completed was before yesterday
-            // AND we haven't already recorded a reason for this specific reset
-            lastDate != null && 
-            lastDate < yesterday && 
-            habit.currentStreak > 0
+            if (habit.currentStreak == 0) return@filter false
+            
+            val lastDateStr = habit.lastCompletedDate ?: return@filter false
+            val lastDate = LocalDate.parse(lastDateStr, dateFormatter)
+            
+            // If today is active and not done, check if it's already dead
+            if (isDayActive(habit, today)) {
+                // If not done today, and last completion was before today
+                if (lastDate.isBefore(today)) {
+                    // It's dead if the previous active day was also missed
+                    var prevActive = today.minusDays(1)
+                    while (!isDayActive(habit, prevActive) && prevActive.isAfter(today.minusDays(7))) {
+                        prevActive = prevActive.minusDays(1)
+                    }
+                    lastDate.isBefore(prevActive)
+                } else {
+                    false
+                }
+            } else {
+                // Today is an off-day, streak is safe for now
+                false
+            }
         }
     }
 
     /**
-     * Calculates the best streak for each day in the provided month.
+     * Calculates the completion percentage (0-100) for each day in the provided month.
      */
     suspend fun getGlobalStreakData(month: java.time.YearMonth = java.time.YearMonth.now()): Map<String, Int> {
         val habits = dao.getAllHabitsOnce()
+        if (habits.isEmpty()) return emptyMap()
+
         val allCompletions = mutableMapOf<Long, Set<LocalDate>>()
-        
         habits.forEach { habit ->
-            // Use 180 days for broader history when viewing previous months
             allCompletions[habit.id] = dao.getCompletionsForHabitOnce(habit.id)
                 .map { LocalDate.parse(it.completedDate, dateFormatter) }
                 .toSet()
@@ -346,23 +390,18 @@ class HabitRepository(
 
         var current = startOfMonth
         while (!current.isAfter(endOfMonth)) {
-            var maxStreakForDay = 0
+            var completedCount = 0
             
             for (habit in habits) {
                 val completions = allCompletions[habit.id] ?: emptySet()
                 if (completions.contains(current)) {
-                    var streak = 0
-                    var check = current
-                    while (completions.contains(check)) {
-                        streak++
-                        check = check.minusDays(1)
-                    }
-                    if (streak > maxStreakForDay) maxStreakForDay = streak
+                    completedCount++
                 }
             }
             
-            if (maxStreakForDay > 0) {
-                result[current.format(dateFormatter)] = maxStreakForDay
+            if (completedCount > 0) {
+                val percentage = (completedCount.toFloat() / habits.size * 100).toInt()
+                result[current.format(dateFormatter)] = percentage
             }
             current = current.plusDays(1)
         }

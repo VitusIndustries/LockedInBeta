@@ -8,6 +8,8 @@ import androidx.appcompat.app.AppCompatDelegate
 import com.streakapp.data.db.StreakDatabase
 import com.streakapp.data.repository.HabitRepository
 import com.streakapp.notifications.NotificationScheduler
+import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.launch
 
 class StreakApplication : Application() {
 
@@ -16,9 +18,18 @@ class StreakApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        SoundManager.init(this)
         applySettings()
         createNotificationChannel()
         NotificationScheduler.scheduleProactiveInsights(this)
+        
+        // Ensure all active habits have their reminders scheduled
+        MainScope().launch {
+            val habits = repository.getAllHabitsOnce()
+            habits.forEach { habit ->
+                NotificationScheduler.scheduleNotification(this@StreakApplication, habit)
+            }
+        }
     }
 
     private fun applySettings() {

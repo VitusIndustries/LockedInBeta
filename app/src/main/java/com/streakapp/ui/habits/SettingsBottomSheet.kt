@@ -13,6 +13,7 @@ import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import com.lockedinbeta.databinding.BottomSheetSettingsBinding
 import com.streakapp.DevModeManager
 import com.streakapp.VibrationManager
+import com.streakapp.SoundManager
 import com.streakapp.ui.widget.HabitWidget
 import androidx.glance.appwidget.updateAll
 import androidx.lifecycle.lifecycleScope
@@ -42,6 +43,7 @@ class SettingsBottomSheet : BottomSheetDialogFragment() {
         // Dark Mode
         binding.switchDarkMode.isChecked = prefs.getBoolean("dark_mode", false)
         binding.switchDarkMode.setOnCheckedChangeListener { _, isChecked ->
+            SoundManager.playTick()
             VibrationManager.vibrateSubtle(requireContext())
             prefs.edit().putBoolean("dark_mode", isChecked).apply()
             if (isChecked) {
@@ -55,6 +57,7 @@ class SettingsBottomSheet : BottomSheetDialogFragment() {
         // Vibration
         binding.switchVibration.isChecked = prefs.getBoolean("vibration", true)
         binding.switchVibration.setOnCheckedChangeListener { _, isChecked ->
+            SoundManager.playTick()
             prefs.edit().putBoolean("vibration", isChecked).apply()
             if (isChecked) VibrationManager.vibrateMedium(requireContext())
         }
@@ -62,6 +65,7 @@ class SettingsBottomSheet : BottomSheetDialogFragment() {
         // Vacation Mode
         binding.switchVacation.isChecked = prefs.getBoolean("vacation_mode", false)
         binding.switchVacation.setOnCheckedChangeListener { _, isChecked ->
+            SoundManager.playTick()
             VibrationManager.vibrateSubtle(requireContext())
             prefs.edit().putBoolean("vacation_mode", isChecked).apply()
             // Refresh widget to show snowflakes/fire immediately
@@ -73,6 +77,7 @@ class SettingsBottomSheet : BottomSheetDialogFragment() {
         // Minimalist Mode
         binding.switchMinimalist.isChecked = prefs.getBoolean("minimalist_mode", false)
         binding.switchMinimalist.setOnCheckedChangeListener { _, isChecked ->
+            SoundManager.playTick()
             VibrationManager.vibrateSubtle(requireContext())
             prefs.edit().putBoolean("minimalist_mode", isChecked).apply()
             (activity as? MainActivity)?.recreate()
@@ -120,6 +125,7 @@ class SettingsBottomSheet : BottomSheetDialogFragment() {
             holder.b.tvHistoryEmoji.text = h.emoji
             holder.b.tvHistoryStreak.text = "Revive"
             holder.b.tvHistoryStreak.setOnClickListener { 
+                SoundManager.playTick()
                 VibrationManager.vibrateMedium(holder.b.root.context)
                 onReinstate(h) 
             }

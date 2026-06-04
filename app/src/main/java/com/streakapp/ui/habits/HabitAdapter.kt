@@ -11,16 +11,19 @@ import com.streakapp.data.model.Habit
 import com.lockedinbeta.databinding.ItemHabitBinding
 import com.streakapp.DevModeManager
 import com.streakapp.VibrationManager
+import com.streakapp.SoundManager
 import android.content.Context
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import com.streakapp.ui.fire.CinematicFireAnimation
 import androidx.compose.ui.platform.ViewCompositionStrategy
+import androidx.compose.runtime.*
 
 class HabitAdapter(
     private val onCheckClick: (Habit) -> Unit,
     private val onStatsClick: (Habit) -> Unit,
     private val onDeleteClick: (Habit) -> Unit,
+    private val onEditClick: (Habit) -> Unit = {},
     private val onFailClick: (Habit) -> Unit = {},
     private val onStreakUpdate: (Long, Int) -> Unit = { _, _ -> }
 ) : ListAdapter<Habit, HabitAdapter.HabitViewHolder>(DiffCallback) {
@@ -83,18 +86,30 @@ class HabitAdapter(
                 onCheckClick(habit)
             }
             binding.btnStats.setOnClickListener { 
+                SoundManager.playTick()
                 VibrationManager.vibrateSubtle(binding.root.context)
                 onStatsClick(habit) 
             }
 
-            // Removed long click listener as requested
+            // Removed old hold-to-edit logic
 
             // Update fire animation
             binding.fireView.visibility = if (displayedStreak > 0 && !isMinimalist && !isVacationMode) View.VISIBLE else View.GONE
             binding.fireView.apply {
                 setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnDetachedFromWindow)
                 setContent {
-                    CinematicFireAnimation(streakCount = displayedStreak)
+                    var isFlaring by remember { mutableStateOf(false) }
+                    
+                    // Hook into completion to trigger flare
+                    LaunchedEffect(habit.lastCompletedDate) {
+                        if (habit.lastCompletedDate == today && habit.lastCompletedDate != null) {
+                            isFlaring = true
+                            kotlinx.coroutines.delay(1000)
+                            isFlaring = false
+                        }
+                    }
+
+                    CinematicFireAnimation(streakCount = displayedStreak, isFlaring = isFlaring)
                 }
             }
             binding.tvLongest.visibility = if (isMinimalist) View.GONE else View.VISIBLE
@@ -115,11 +130,20 @@ class HabitAdapter(
                 }
             }
 
-            // Dev Mode Manual Fail
+            // Tap Name to Edit
             binding.tvHabitName.setOnClickListener {
+                SoundManager.playTick()
+                onEditClick(habit)
+            }
+
+            // Dev Mode Manual Fail - Long press name in dev mode
+            binding.tvHabitName.setOnLongClickListener {
                 if (DevModeManager.isDevModeEnabled) {
                     VibrationManager.vibrateStrong(binding.root.context)
                     onFailClick(habit)
+                    true
+                } else {
+                    false
                 }
             }
 

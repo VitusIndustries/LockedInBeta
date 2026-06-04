@@ -37,8 +37,15 @@ class StreakCalendarView @JvmOverloads constructor(
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
         val result = gestureDetector.onTouchEvent(event)
-        if (!result && event.action == MotionEvent.ACTION_UP) {
-            performClick()
+        
+        if (event.action == MotionEvent.ACTION_UP && !result) {
+            dayRects.forEach { (date, rect) ->
+                if (rect.contains(event.x, event.y)) {
+                    onDayClicked?.invoke(date)
+                    performClick()
+                    return true
+                }
+            }
         }
         return true
     }
@@ -49,6 +56,9 @@ class StreakCalendarView @JvmOverloads constructor(
 
     private val dateFormatter = DateTimeFormatter.ISO_LOCAL_DATE
     private var streakData: Map<String, Int> = emptyMap()
+    
+    enum class ColorMode { STREAK, PERCENTAGE }
+    private var colorMode = ColorMode.STREAK
 
     private val paintCell = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
@@ -69,6 +79,9 @@ class StreakCalendarView @JvmOverloads constructor(
     private val today = LocalDate.now()
     
     var onMonthChanged: ((YearMonth) -> Unit)? = null
+    var onDayClicked: ((LocalDate) -> Unit)? = null
+
+    private val dayRects = mutableMapOf<LocalDate, RectF>()
 
     fun nextMonth() {
         displayedMonth = displayedMonth.plusMonths(1)
@@ -97,8 +110,9 @@ class StreakCalendarView @JvmOverloads constructor(
         return (context.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES
     }
 
-    fun setStreakData(data: Map<String, Int>) {
+    fun setStreakData(data: Map<String, Int>, mode: ColorMode = ColorMode.STREAK) {
         streakData = data
+        colorMode = mode
         invalidate()
     }
 
@@ -137,6 +151,8 @@ class StreakCalendarView @JvmOverloads constructor(
         val firstDayOfWeek = (displayedMonth.atDay(1).dayOfWeek.value - 1) % 7
         val totalDays = displayedMonth.lengthOfMonth()
 
+        dayRects.clear()
+
         for (day in 1..totalDays) {
             val index = firstDayOfWeek + day - 1
             val col = index % 7
@@ -145,17 +161,30 @@ class StreakCalendarView @JvmOverloads constructor(
             val cx = col * cellSize + cellSize / 2
             val cy = 130 + row * cellSize + cellSize / 2
             val rect = RectF(cx - radius, cy - radius, cx + radius, cy + radius)
+            
+            val currentDate = displayedMonth.atDay(day)
+            dayRects[currentDate] = rect
 
-            val date = displayedMonth.atDay(day).format(dateFormatter)
+            val date = currentDate.format(dateFormatter)
             val currentStreak = streakData[date] ?: 0
             val isToday = displayedMonth.atDay(day) == today
 
-            val cellColor = when {
-                currentStreak >= 30 -> Color.parseColor("#F44336")
-                currentStreak >= 21 -> Color.parseColor("#FFEB3B")
-                currentStreak >= 7 -> Color.parseColor("#4CAF50")
-                currentStreak > 0 -> Color.parseColor("#FF6D00")
-                else -> if (isDarkMode()) Color.parseColor("#333333") else Color.parseColor("#E0E0E0")
+            val cellColor = if (colorMode == ColorMode.PERCENTAGE) {
+                when {
+                    currentStreak >= 100 -> Color.parseColor("#FF6D00") // 100% - Orange
+                    currentStreak >= 50 -> Color.parseColor("#03A9F4")  // 50% - Blue
+                    currentStreak >= 33 -> Color.parseColor("#B0BEC5")  // 33% - Silver
+                    currentStreak > 0 -> if (isDarkMode()) Color.parseColor("#333333") else Color.parseColor("#E0E0E0")
+                    else -> if (isDarkMode()) Color.parseColor("#333333") else Color.parseColor("#E0E0E0")
+                }
+            } else {
+                when {
+                    currentStreak >= 30 -> Color.parseColor("#F44336")
+                    currentStreak >= 21 -> Color.parseColor("#FFEB3B")
+                    currentStreak >= 7 -> Color.parseColor("#4CAF50")
+                    currentStreak > 0 -> Color.parseColor("#FF6D00")
+                    else -> if (isDarkMode()) Color.parseColor("#333333") else Color.parseColor("#E0E0E0")
+                }
             }
 
             paintCell.color = cellColor
@@ -163,8 +192,9 @@ class StreakCalendarView @JvmOverloads constructor(
 
             // Dynamic text color for readability in Dark/Light mode
             paintText.color = when {
-                currentStreak >= 21 && currentStreak < 30 -> Color.BLACK // Black on Yellow
-                currentStreak > 0 -> Color.WHITE // White on Red/Green/Orange
+                colorMode == ColorMode.PERCENTAGE && currentStreak >= 33 -> Color.WHITE
+                colorMode == ColorMode.STREAK && currentStreak >= 21 && currentStreak < 30 -> Color.BLACK // Black on Yellow
+                currentStreak > 0 -> Color.WHITE // White on Red/Green/Orange/Blue
                 isDarkMode() -> Color.parseColor("#BBBBBB") // Light grey on Dark grey
                 else -> Color.parseColor("#9E9E9E") // Dark grey on Light grey
             }

@@ -11,6 +11,7 @@ import androidx.lifecycle.lifecycleScope
 import com.streakapp.StreakApplication
 import com.lockedinbeta.databinding.FragmentHistoryBinding
 import com.streakapp.data.model.Habit
+import com.streakapp.SoundManager
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -44,7 +45,7 @@ class HistoryFragment : Fragment() {
         lifecycleScope.launch {
             val month = binding.historyCalendar.getDisplayedMonth()
             val streakData = repo.getGlobalStreakData(month)
-            binding.historyCalendar.setStreakData(streakData)
+            binding.historyCalendar.setStreakData(streakData, com.streakapp.ui.stats.StreakCalendarView.ColorMode.PERCENTAGE)
         }
     }
 
@@ -54,6 +55,10 @@ class HistoryFragment : Fragment() {
         binding.historyCalendar.onMonthChanged = { _ ->
             refreshData()
         }
+
+        binding.historyCalendar.onDayClicked = { date ->
+            showHabitsForDate(date)
+        }
         
         binding.btnMonthPickerGlobal.setOnClickListener {
             showMonthPicker(it) { selectedMonth ->
@@ -62,10 +67,12 @@ class HistoryFragment : Fragment() {
         }
         
         binding.btnPrevMonthGlobal.setOnClickListener {
+            SoundManager.playTick()
             binding.historyCalendar.prevMonth()
         }
         
         binding.btnNextMonthGlobal.setOnClickListener {
+            SoundManager.playTick()
             binding.historyCalendar.nextMonth()
         }
 
@@ -76,10 +83,12 @@ class HistoryFragment : Fragment() {
         }
         
         binding.btnPrevMonthDetail.setOnClickListener {
+            SoundManager.playTick()
             binding.habitDetailCalendar.prevMonth()
         }
         
         binding.btnNextMonthDetail.setOnClickListener {
+            SoundManager.playTick()
             binding.habitDetailCalendar.nextMonth()
         }
         
@@ -97,6 +106,7 @@ class HistoryFragment : Fragment() {
             binding.habitSelector.setAdapter(adapter)
             
             binding.habitSelector.setOnItemClickListener { _, _, position, _ ->
+                SoundManager.playTick()
                 val selectedHabit = habits[position]
                 showHabitDetails(selectedHabit)
             }
@@ -104,6 +114,7 @@ class HistoryFragment : Fragment() {
     }
 
     private fun showMonthPicker(view: View, onMonthSelected: (java.time.YearMonth) -> Unit) {
+        SoundManager.playTick()
         val popup = androidx.appcompat.widget.PopupMenu(requireContext(), view)
         val currentMonth = java.time.YearMonth.now()
         
@@ -120,6 +131,27 @@ class HistoryFragment : Fragment() {
             true
         }
         popup.show()
+    }
+
+    private fun showHabitsForDate(date: java.time.LocalDate) {
+        val repo = (requireActivity().application as StreakApplication).repository
+        lifecycleScope.launch {
+            val dateStr = date.format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE)
+            val habits = repo.getHabitsCompletedOnDate(dateStr)
+            
+            val message = if (habits.isEmpty()) {
+                "No habits completed on ${date.month.name} ${date.dayOfMonth}"
+            } else {
+                "Completed on ${date.month.name} ${date.dayOfMonth}:\n\n" + 
+                habits.joinToString("\n") { "${it.emoji} ${it.name}" }
+            }
+            
+            com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+                .setTitle("Day Summary")
+                .setMessage(message)
+                .setPositiveButton("OK", null)
+                .show()
+        }
     }
 
     private fun showHabitDetails(habit: Habit) {

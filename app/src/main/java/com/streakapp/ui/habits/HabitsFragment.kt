@@ -10,6 +10,10 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.Rect
 import com.lockedinbeta.databinding.FragmentHabitsBinding
 import com.streakapp.VibrationManager
 import com.streakapp.notifications.NotificationScheduler
@@ -60,6 +64,12 @@ class HabitsFragment : Fragment() {
                 ResetReasonBottomSheet.newInstance(habit.id)
                     .show(parentFragmentManager, "ResetReason")
             },
+            onEditClick = { habit ->
+                if (parentFragmentManager.findFragmentByTag("EditHabit") == null) {
+                    AddHabitBottomSheet.newInstance(habit.id)
+                        .show(parentFragmentManager, "EditHabit")
+                }
+            },
             onStreakUpdate = { _, streak ->
                 (requireActivity() as? MainActivity)?.handleStreakCelebration("$streak days done! 🔥")
             },
@@ -83,6 +93,13 @@ class HabitsFragment : Fragment() {
             ItemTouchHelper.UP or ItemTouchHelper.DOWN, 
             ItemTouchHelper.RIGHT
         ) {
+            private val paint = Paint().apply {
+                color = Color.WHITE
+                textSize = 40f
+                isFakeBoldText = true
+                textAlign = Paint.Align.LEFT
+            }
+
             override fun onMove(
                 recyclerView: RecyclerView,
                 viewHolder: RecyclerView.ViewHolder,
@@ -102,6 +119,32 @@ class HabitsFragment : Fragment() {
                     val habit = adapter.currentList[viewHolder.bindingAdapterPosition]
                     viewModel.archiveHabit(habit)
                 }
+            }
+
+            override fun onChildDraw(
+                c: Canvas,
+                recyclerView: RecyclerView,
+                viewHolder: RecyclerView.ViewHolder,
+                dX: Float,
+                dY: Float,
+                actionState: Int,
+                isCurrentlyActive: Boolean
+            ) {
+                if (actionState == ItemTouchHelper.ACTION_STATE_SWIPE && dX > 0) {
+                    val itemView = viewHolder.itemView
+                    val text = "ARCHIVE"
+                    val bounds = Rect()
+                    paint.getTextBounds(text, 0, text.length, bounds)
+                    
+                    val x = itemView.left + 40f
+                    val y = itemView.top + (itemView.height / 2f) + (bounds.height() / 2f)
+                    
+                    // Draw text only if we've swiped enough
+                    if (dX > 100) {
+                        c.drawText(text, x, y, paint)
+                    }
+                }
+                super.onChildDraw(c, recyclerView, viewHolder, dX, dY, actionState, isCurrentlyActive)
             }
         }).attachToRecyclerView(binding.recyclerHabits)
     }
@@ -141,6 +184,10 @@ class HabitsFragment : Fragment() {
                     .show(parentFragmentManager, "ResetReason")
             }
         }
+    }
+
+    override fun onPause() {
+        super.onPause()
     }
 
     override fun onDestroyView() {

@@ -21,5 +21,6 @@ data class Habit(
     val priority: Int = 1, // 0: High, 1: Medium, 2: Low
     val manualOrder: Int = 0,
     val targetCount: Int = 1, // Number of times to do per day
-    val currentCountToday: Int = 0 // Count for the current day
+    val currentCountToday: Int = 0, // Count for the current day
+    val activeDays: Int = 127 // Bitmask for Mon-Sun
 )

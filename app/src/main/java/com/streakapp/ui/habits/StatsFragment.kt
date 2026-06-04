@@ -47,6 +47,31 @@ class StatsFragment : BottomSheetDialogFragment() {
             val longestText = if (habit.longestStreak == 1) "1 day" else "${habit.longestStreak} days"
             binding.tvCurrentStreak.text = "🔥 Current: $currentText"
             binding.tvLongestStreak.text = "🏆 Longest: $longestText"
+            
+            // Populate Insights
+            lifecycleScope.launch {
+                val failureDay = repo.getFailurePattern(habit.id)
+                val toughestDay = repo.getToughestDayOfWeek(habit.id)
+                val positiveInsight = repo.getPositiveInsight(habit)
+                val destructiveReason = repo.getMostDestructiveAntiHabit(habit.id)
+                
+                val insight = when {
+                    destructiveReason != null -> "Avoid $destructiveReason as this is your most destructive anti-habit."
+                    failureDay != null -> "You usually break ${habit.name} around day $failureDay. Tomorrow is day $failureDay. Push through it."
+                    toughestDay != null -> {
+                        val dayName = toughestDay.name.lowercase().replaceFirstChar { it.uppercase() }
+                        "You often struggle with ${habit.name} on $dayName. Stay focused today!"
+                    }
+                    positiveInsight != null -> positiveInsight
+                    else -> "Keep going — insights appear as your data grows"
+                }
+                binding.tvInsightText.text = insight
+                
+                // Subtle pulse for the lightbulb
+                binding.ivInsightIcon.animate().scaleX(1.15f).scaleY(1.15f).setDuration(300).withEndAction {
+                    binding.ivInsightIcon.animate().scaleX(1.0f).scaleY(1.0f).setDuration(400).start()
+                }.start()
+            }
         }
 
         statsViewModel.last30Days.observe(viewLifecycleOwner) { _ ->

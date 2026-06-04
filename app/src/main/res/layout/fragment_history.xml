@@ -94,7 +94,7 @@
                                 android:layout_width="32dp"
                                 android:layout_height="32dp"
                                 android:background="?attr/selectableItemBackgroundBorderless"
-                                android:src="@android:drawable/ic_media_previous"
+                                android:src="@drawable/ic_chevron_left"
                                 app:tint="?attr/colorOnSurfaceVariant" />
 
                             <com.google.android.material.button.MaterialButton
@@ -110,7 +110,7 @@
                                 android:layout_width="32dp"
                                 android:layout_height="32dp"
                                 android:background="?attr/selectableItemBackgroundBorderless"
-                                android:src="@android:drawable/ic_media_next"
+                                android:src="@drawable/ic_chevron_right"
                                 app:tint="?attr/colorOnSurfaceVariant" />
 
                         </LinearLayout>
@@ -195,7 +195,7 @@
                                     android:layout_width="32dp"
                                     android:layout_height="32dp"
                                     android:background="?attr/selectableItemBackgroundBorderless"
-                                    android:src="@android:drawable/ic_media_previous"
+                                    android:src="@drawable/ic_chevron_left"
                                     app:tint="?attr/colorOnSurfaceVariant" />
 
                                 <com.google.android.material.button.MaterialButton
@@ -211,7 +211,7 @@
                                     android:layout_width="32dp"
                                     android:layout_height="32dp"
                                     android:background="?attr/selectableItemBackgroundBorderless"
-                                    android:src="@android:drawable/ic_media_next"
+                                    android:src="@drawable/ic_chevron_right"
                                     app:tint="?attr/colorOnSurfaceVariant" />
 
                             </LinearLayout>
